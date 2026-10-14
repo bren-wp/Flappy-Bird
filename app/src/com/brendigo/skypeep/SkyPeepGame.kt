@@ -118,7 +118,7 @@ class SkyPeepGame(private val share: ((String) -> Unit)? = null) : ApplicationAd
             Page.MENU -> menu()
             Page.LEVELS -> levels()
             Page.PLAY -> gameplay(true)
-            Page.PAUSE -> { gameplay(false); pause() }
+            Page.PAUSE -> { gameplay(false); pauseOverlay() }
             Page.RESULTS -> results()
             Page.SKINS -> skins()
             Page.SETTINGS -> settings()
@@ -431,7 +431,7 @@ class SkyPeepGame(private val share: ((String) -> Unit)? = null) : ApplicationAd
         }
     }
 
-    private fun pause() {
+    private fun pauseOverlay() {
         renderer.color = Color(0f, 0.09f, 0.2f, .7f)
         renderer.rect(0f, 0f, width, height)
         panel(55f, 215f, 430f, 540f, Color.valueOf("FFF1D7"))
