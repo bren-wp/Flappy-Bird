@@ -1,25 +1,37 @@
-# SkyPeep
+<div align="center">
 
-**SkyPeep** is a 2D Android arcade flight game starring an original blue aviator bird exploring six sky worlds.
+# 🐦 SkyPeep
 
-## Features
+**Six fantastic sky worlds. One brave little aviator. Your next flight starts here.**
 
-- Touch-controlled flight, gravity, obstacle collision and scoring
-- Six playable worlds: Sky Start, Cloud Pass, Crystal Drop, Wind Gate, Moon Glow and Sun Peak
-- Level progression, local record and star persistence
-- Coins and gems, five skins, purchases and equipment
-- Main menu, world selection, pause, result, skin selection and settings
-- Android share sheet for results
-- Portrait layout using a fixed virtual viewport for phone sizes
+![SkyPeep gameplay](assets/previews/gameplay.jpg)
 
-## Artwork status
+A vivid 2D Android arcade adventure with floating islands, enchanted ruins, glowing crystals and a blue bird with a red scarf.
 
-The current GitHub build uses simplified procedural 2D illustration **and is not pixel-for-pixel identical** to the approved SkyPeep screenshot designs. The prepared image assets and exact illustrated screen backgrounds are not yet committed. This limitation is intentional and avoids broken references to absent art files.
+</div>
 
-## Build
+## Explore the sky
 
-The Android APK is built by GitHub Actions and available as a successful run artifact. The project uses Kotlin and libGDX. A signed production AAB, on-device launch tests, artwork parity verification, and Play Store QA are still outstanding.
+| Home | Six worlds | Your bird |
+|:---:|:---:|:---:|
+| ![Main menu](assets/previews/menu.jpg) | ![Level select](assets/previews/levels.jpg) | ![Skins](assets/previews/skins.jpg) |
 
-## Source and rights
+Fly through **Sky Start**, **Cloud Pass**, **Crystal Drop**, **Wind Gate**, **Moon Glow** and **Sun Peak**. Each world features distinct, original 2D scenery and obstacle styling.
 
-Original user-provided starter-game rights and any artwork licenses should be verified before distribution. Do not commit signing credentials.
+### What is inside
+
+- 🎮 Responsive touch-to-flap flight and score progression
+- 🗺️ Six themed levels with stars and unlocks
+- 🐦 Three-frame character flight animation
+- ✨ Collectible coins, gems and alternate bird skins
+- 🏆 Personal bests and locally saved progress
+- 🔊 Music, sound effects and pause/resume
+- 📤 Share your score through Android
+
+## Android builds
+
+Download the newest **preview** release from [GitHub Releases](https://github.com/bren-wp/Flappy-Bird/releases). Debug APKs are installable for testing; bundled AABs are intentionally **unsigned** until release signing is configured. The app's final testing and store readiness have not been certified.
+
+## Credits
+
+SkyPeep illustrations were created for this project using the user-provided design references. Android implementation uses Kotlin and [libGDX](https://libgdx.com/). See [LICENSE](LICENSE) for repository licensing.

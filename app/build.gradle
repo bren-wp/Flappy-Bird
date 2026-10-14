@@ -10,14 +10,14 @@ android {
         applicationId 'com.brendigo.skypeep'
         minSdk 23
         targetSdk 36
-        versionCode 1
-        versionName '0.1.0'
+        versionCode 2
+        versionName '0.2.0'
     }
     sourceSets.main {
         manifest.srcFile 'AndroidManifest.xml'
         java.srcDirs = ['src']
         res.srcDirs = ['res']
-        assets.srcDirs = ['assets']
+        assets.srcDirs = ["$buildDir/generated/skypeep-assets"]
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
@@ -34,3 +34,36 @@ dependencies {
     runtimeOnly 'com.badlogicgames.gdx:gdx-platform:1.14.0:natives-x86'
     runtimeOnly 'com.badlogicgames.gdx:gdx-platform:1.14.0:natives-x86_64'
 }
+
+// Assets are stored as immutable chunks to preserve the user's exact source artwork in GitHub.
+// Reassembly and SHA-256 verification are performed automatically before Android builds.
+def artParts = fileTree(dir: "$rootDir/assets/pack", include: 'part-*')
+tasks.register('restoreSkyPeepArtwork') {
+    inputs.files(artParts)
+    outputs.dir(layout.buildDirectory.dir('generated/skypeep-assets'))
+    doLast {
+        def ordered = artParts.files.sort { it.name }
+        if (ordered.size() != 24) throw new GradleException('Missing SkyPeep artwork chunks')
+        def artZip = file("$buildDir/skypeep-art.zip")
+        artZip.parentFile.mkdirs()
+        artZip.withOutputStream { output ->
+            ordered.each { part ->
+                part.withInputStream { input ->
+                    byte[] buffer = new byte[32768]
+                    int count
+                    while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count)
+                }
+            }
+        }
+        def digest = java.security.MessageDigest.getInstance('SHA-256').digest(artZip.bytes)
+        def actual = digest.collect { String.format('%02x', it & 0xff) }.join('')
+        if (actual != 'e9797d4f9395b0e1d84c03f5c142875ec73d2415620c598e511a5b330bdb8624') {
+            throw new GradleException('SkyPeep artwork SHA-256 verification failed: ' + actual)
+        }
+        copy {
+            from zipTree(artZip)
+            into file("$buildDir/generated/skypeep-assets")
+        }
+    }
+}
+tasks.named('preBuild').configure { dependsOn('restoreSkyPeepArtwork') }
