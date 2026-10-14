@@ -1,0 +1,36 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.brendigo.skypeep'
+    compileSdk 36
+    defaultConfig {
+        applicationId 'com.brendigo.skypeep'
+        minSdk 23
+        targetSdk 36
+        versionCode 1
+        versionName '0.1.0'
+    }
+    sourceSets.main {
+        manifest.srcFile 'AndroidManifest.xml'
+        java.srcDirs = ['src']
+        res.srcDirs = ['res']
+        assets.srcDirs = ['assets']
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+}
+
+dependencies {
+    implementation 'com.badlogicgames.gdx:gdx:1.14.0'
+    implementation 'com.badlogicgames.gdx:gdx-backend-android:1.14.0'
+    runtimeOnly 'com.badlogicgames.gdx:gdx-platform:1.14.0:natives-armeabi-v7a'
+    runtimeOnly 'com.badlogicgames.gdx:gdx-platform:1.14.0:natives-arm64-v8a'
+    runtimeOnly 'com.badlogicgames.gdx:gdx-platform:1.14.0:natives-x86'
+    runtimeOnly 'com.badlogicgames.gdx:gdx-platform:1.14.0:natives-x86_64'
+}
