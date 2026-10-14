@@ -29,6 +29,11 @@ jobs:
           test -s app/build/outputs/apk/debug/app-debug.apk
           test -s app/build/outputs/bundle/release/app-release.aab
           unzip -t app/build/outputs/apk/debug/app-debug.apk > /dev/null
+          for asset in screen_menu.jpg screen_map.jpg screen_skins.jpg bird_idle.png \
+                       pillar_1_top.png pillar_6_bottom.png bg_6.jpg ui_36.fnt music.ogg; do
+            unzip -Z -1 app/build/outputs/apk/debug/app-debug.apk | grep -Fxq "assets/$asset" \
+              || { echo "MISSING APK ASSET: $asset"; exit 1; }
+          done
           unzip -t app/build/outputs/bundle/release/app-release.aab > /dev/null
       - uses: actions/upload-artifact@v4
         with:
@@ -42,7 +47,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="v0.2.0-preview.${GITHUB_RUN_NUMBER}"
+          VERSION="v0.2.1-preview.${GITHUB_RUN_NUMBER}"
           gh release create "$VERSION" \
             app/build/outputs/apk/debug/app-debug.apk \
             app/build/outputs/bundle/release/app-release.aab \

@@ -282,6 +282,14 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
 
     private fun clickSkins(x: Float, y: Float) {
         playSound("click")
+        if (y < 140f && x in 240f..355f) {
+            toast("EARN COINS IN FLIGHT")
+            return
+        }
+        if (y < 140f && x in 825f..935f) {
+            toast("COMPLETE WORLDS FOR GEMS")
+            return
+        }
         if (hit(x,y,0f,1445f,210f,227f)) { screen = Screen.MENU; return }
         if (hit(x,y,285f,810f,398f,120f)) { selectedSkin = 0; save(); toast("DEFAULT EQUIPPED"); return }
         if (y !in 1010f..1480f) return
