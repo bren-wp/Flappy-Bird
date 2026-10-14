@@ -1,25 +1,25 @@
 # SkyPeep
 
-A colorful 2D mobile bird-flight adventure for Android, featuring an original aviator-bird mascot and a floating-islands world.
+**SkyPeep** is a 2D Android arcade flight game starring an original blue aviator bird exploring six sky worlds.
 
-## Development status
+## Features
 
-The repository currently contains the initial Android/libGDX foundation and a simple playable flight prototype. The full SkyPeep illustrations, screens, six themed levels, currencies, cosmetics and persistent progress from the previously prepared offline project **have not yet been migrated**. Do not present this branch as feature-complete or visually identical to the supplied mockups.
+- Touch-controlled flight, gravity, obstacle collision and scoring
+- Six playable worlds: Sky Start, Cloud Pass, Crystal Drop, Wind Gate, Moon Glow and Sun Peak
+- Level progression, local record and star persistence
+- Coins and gems, five skins, purchases and equipment
+- Main menu, world selection, pause, result, skin selection and settings
+- Android share sheet for results
+- Portrait layout using a fixed virtual viewport for phone sizes
 
-## Android
+## Artwork status
 
-- Kotlin + libGDX
-- Android SDK 36, minimum SDK 23
-- Continuous integration assembles a debug APK and uploads it as a GitHub Actions artifact.
-
-## Planned art direction
-
-Sky Start · Cloud Pass · Crystal Drop · Wind Gate · Moon Glow · Sun Peak
-
-The design uses a blue bird with aviator goggles and a red scarf, approachable flat 2D art, branded screen layouts, and level-specific obstacle styles.
+The current GitHub build uses simplified procedural 2D illustration **and is not pixel-for-pixel identical** to the approved SkyPeep screenshot designs. The prepared image assets and exact illustrated screen backgrounds are not yet committed. This limitation is intentional and avoids broken references to absent art files.
 
 ## Build
 
-`gradle :app:assembleDebug`
+The Android APK is built by GitHub Actions and available as a successful run artifact. The project uses Kotlin and libGDX. A signed production AAB, on-device launch tests, artwork parity verification, and Play Store QA are still outstanding.
 
-No signing keys or production release credentials are committed to the repository.
+## Source and rights
+
+Original user-provided starter-game rights and any artwork licenses should be verified before distribution. Do not commit signing credentials.
