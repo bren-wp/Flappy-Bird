@@ -369,7 +369,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
         verticalSpeed = max(-900f, verticalSpeed - 1720f*dt)
         birdY += verticalSpeed *dt
         if (birdY < 38f || birdY + BIRD_H > H - 205f) { finish(false); return }
-        val gap = max(355f, 585f - (level-1)*38f)
+        val gap = FlightRules.gap(level)
         val moveSpeed = 235f + (level-1)*22f
         nextGate -= dt
         if (nextGate <= 0f) {
@@ -388,8 +388,12 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
             val hitRight = BIRD_X + BIRD_W - 53f
             val hitBottom=birdY+52f
             val hitTop=birdY+BIRD_H-55f
-            if (gate.x < hitRight && gate.x+gateWidth > hitLeft &&
-                (hitBottom<bottomLimit || hitTop>topLimit)) {
+            if (FlightRules.intersectsObstacle(
+                    gateX = gate.x, gateWidth = gateWidth,
+                    gapBottom = bottomLimit, gapTop = topLimit,
+                    birdLeft = hitLeft, birdRight = hitRight,
+                    birdBottom = hitBottom, birdTop = hitTop
+                )) {
                 finish(false)
                 return
             }
@@ -401,8 +405,19 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
                 earnedCoins+=5
                 playSound("coin")
             }
-            if (gate.gem && !gate.gemTaken && gate.coinTaken) {
-                gate.gemTaken=true; gems++; playSound("coin")
+            // Gems have their own hitbox; collecting a coin must not grant a distant gem.
+            if (gate.gem && !gate.gemTaken &&
+                FlightRules.overlapsPickup(
+                    playerX = BIRD_X + BIRD_W * .5f,
+                    playerY = birdY + BIRD_H * .5f,
+                    pickupX = gate.x + 118f,
+                    pickupY = gate.centerY + 93f,
+                    radiusX = 68f,
+                    radiusY = 57f
+                )) {
+                gate.gemTaken=true
+                gems++
+                playSound("coin")
             }
             if (!gate.scored && gate.x+gateWidth < BIRD_X+40f) {
                 gate.scored=true
@@ -414,7 +429,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
         }
     }
 
-    private fun targetScore() = 8 + level*3
+    private fun targetScore() = FlightRules.targetScore(level)
     private fun finish(won: Boolean) {
         resultWon = won
         screen = Screen.RESULT
@@ -434,7 +449,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
 
     private fun drawGameplay() {
         image("bg_$level",0f,0f,W,H)
-        val gap = max(355f,585f-(level-1)*38f)
+        val gap = FlightRules.gap(level)
         for (gate in gates) {
             val top = pictures["pillar_${level}_top"]!!
             val bottom = pictures["pillar_${level}_bottom"]!!

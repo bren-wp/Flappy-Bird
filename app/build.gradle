@@ -10,12 +10,12 @@ android {
         applicationId 'com.brendigo.skypeep'
         minSdk 23
         targetSdk 36
-        versionCode 3
-        versionName '0.2.1'
+        versionCode 4
+        versionName '0.2.2'
     }
     sourceSets.main {
         manifest.srcFile 'AndroidManifest.xml'
-        java.srcDirs = ['src']
+        java.srcDirs = ['src/com']
         res.srcDirs = ['res']
         assets.srcDirs = ["$buildDir/generated/skypeep-assets"]
     }
@@ -27,6 +27,7 @@ android {
 }
 
 dependencies {
+    testImplementation 'junit:junit:4.13.2'
     implementation 'com.badlogicgames.gdx:gdx:1.14.0'
     implementation 'com.badlogicgames.gdx:gdx-backend-android:1.14.0'
     runtimeOnly 'com.badlogicgames.gdx:gdx-platform:1.14.0:natives-armeabi-v7a'

@@ -23,7 +23,7 @@ jobs:
         with:
           gradle-version: '8.14.3'
       - name: Build APK and unsigned AAB
-        run: gradle :app:assembleDebug :app:bundleRelease --stacktrace
+        run: gradle :app:testDebugUnitTest :app:assembleDebug :app:bundleRelease --stacktrace
       - name: Verify build outputs
         run: |
           test -s app/build/outputs/apk/debug/app-debug.apk
@@ -47,7 +47,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="v0.2.1-preview.${GITHUB_RUN_NUMBER}"
+          VERSION="v0.2.2-preview.${GITHUB_RUN_NUMBER}"
           gh release create "$VERSION" \
             app/build/outputs/apk/debug/app-debug.apk \
             app/build/outputs/bundle/release/app-release.aab \
