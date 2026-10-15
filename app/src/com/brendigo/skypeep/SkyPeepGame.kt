@@ -31,7 +31,8 @@ import kotlin.math.sqrt
 class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
                   private val qaWorld: Int = 0,
                   private val qaSkin: Int = -1,
-                  private val qaVictory: Boolean = false) : ApplicationAdapter() {
+                  private val qaVictory: Boolean = false,
+                  private val qaPillars: Boolean = false) : ApplicationAdapter() {
     companion object {
         private const val W = 941f
         private const val H = 1672f
@@ -62,6 +63,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     private val chromeTextures = mutableMapOf<String, Texture>()
     private var costumes: Map<Int, Texture> = emptyMap()
     private var victoryStar: Texture? = null
+    private var pillarStem: Texture? = null
     private var music: Music? = null
     private val sounds = mutableMapOf<String, Sound>()
     private val tmp = GlyphLayout()
@@ -173,6 +175,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         for (asset in levelArtNames(newLevel)) {
             load(asset, if (asset.startsWith("bg_")) "jpg" else "png")
         }
+        pillarStem?.dispose()
+        pillarStem = SkyPeepPillarStem.create(newLevel)
         loadedLevelArt = newLevel
     }
 
@@ -417,6 +421,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         elapsed=0f
         nextGate=2.0f
         gates.clear()
+        if (qaPillars) gates.add(Gate(W - 300f,1050f))
         verticalSpeed=0f
         birdY=840f
         flapTimer=0f
@@ -534,17 +539,15 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
             val bottomY = gate.centerY-gap*.5f
             val pillarWidth=GATE_WIDTH
             // The pole stems are rendered behind the photographed caps as scalable 2D shapes.
-            val tint = when(level) {
-                3 -> Color(.14f,.27f,.43f,1f)
-                5 -> Color(.25f,.16f,.48f,1f)
-                6 -> Color(.90f,.76f,.47f,1f)
-                else -> Color(.89f,.84f,.72f,1f)
-            }
-            drawRect(gate.x+39f, topY+top.height*.95f, pillarWidth-72f,
-                     max(0f,H-(topY+top.height*.95f)),tint)
+            // Continuous, textured shafts sit behind the original illustrated caps.
+            val stemX = gate.x + 53f
+            val stemW = pillarWidth - 105f
+            drawStoneStem(stemX,stemW,PillarGeometry.topTailStart(topY,top.height.toFloat()),H)
+            drawStoneStem(stemX,stemW,0f,
+                PillarGeometry.bottomTailHeight(bottomY,bottom.height.toFloat()))
             image("pillar_${level}_top",gate.x,topY,pillarWidth,top.height.toFloat())
             image("pillar_${level}_bottom",gate.x,bottomY-bottom.height,
-                  pillarWidth,bottom.height.toFloat())
+                pillarWidth,bottom.height.toFloat())
             if (!gate.coinTaken) {
                 drawCoin(gate.x+118f,gate.centerY+9f,37f)
             }
@@ -557,6 +560,17 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         if (readyForFirstTap) {
             badge("dark",290f,355f,360f,88f)
             fitted("TAP TO FLY",412f,fontSmall,1.5f,331f)
+        }
+    }
+
+    private fun drawStoneStem(x:Float,width:Float,start:Float,end:Float) {
+        val tile=pillarStem ?: return
+        var y=max(0f,start)
+        val stop=min(H,end)
+        while(y<stop-0.5f) {
+            val size=min(144f,stop-y)
+            batch.draw(tile,x,y,width,size)
+            y+=size
         }
     }
 
@@ -887,6 +901,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         chromeTextures.values.forEach { it.dispose() }
         costumes.values.forEach { it.dispose() }
         victoryStar?.dispose()
+        pillarStem?.dispose()
         if (::batch.isInitialized)batch.dispose()
     }
 }
