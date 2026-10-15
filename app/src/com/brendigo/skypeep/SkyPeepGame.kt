@@ -55,7 +55,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
     private lateinit var fontSmall: BitmapFont
     private lateinit var fontLarge: BitmapFont
     private lateinit var solid: Texture
-    private val chrome = mutableMapOf<String, Texture>()
+    private val chrome = mutableMapOf<String, com.badlogic.gdx.graphics.g2d.NinePatch>()
+    private val chromeTextures = mutableMapOf<String, Texture>()
     private var music: Music? = null
     private val sounds = mutableMapOf<String, Sound>()
     private val tmp = GlyphLayout()
@@ -681,16 +682,19 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
                 }
                 pix.drawPixel(x,y,Color.rgba8888(c))
             }
-            chrome[name]=Texture(pix).also {
+            val image=Texture(pix).also {
                 it.setFilter(Texture.TextureFilter.Linear,Texture.TextureFilter.Linear)
             }
+            chromeTextures[name]=image
+            chrome[name]=com.badlogic.gdx.graphics.g2d.NinePatch(image,32,32,32,32)
             pix.dispose()
         }
     }
 
     private fun badge(name:String,x:Float,y:Float,width:Float,height:Float) {
         if(width<=0f || height<=0f) return
-        chrome[name]?.let { batch.draw(it,x,y,width,height) }
+        if(width>=64f && height>=64f) chrome[name]?.draw(batch,x,y,width,height)
+        else chromeTextures[name]?.let { batch.draw(it,x,y,width,height) }
     }
 
     private fun toggle(x:Float,y:Float,enabled:Boolean) {
@@ -767,7 +771,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
         if (::fontSmall.isInitialized)fontSmall.dispose()
         if (::fontLarge.isInitialized)fontLarge.dispose()
         if (::solid.isInitialized)solid.dispose()
-        chrome.values.forEach { it.dispose() }
+        chromeTextures.values.forEach { it.dispose() }
         if (::batch.isInitialized)batch.dispose()
     }
 }
