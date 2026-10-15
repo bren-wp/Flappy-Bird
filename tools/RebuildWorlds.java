@@ -254,8 +254,12 @@ class RebuildWorlds {
         if(original==null || original.getWidth()!=367 || original.getHeight()!=210)
             throw new IOException("Unexpected illustrated score header: "+file);
         BufferedImage cleaned=new BufferedImage(367,210,BufferedImage.TYPE_INT_ARGB);
+        // Graphics2D.drawImage() composites semi-transparent source pixels,
+        // changing exact ARGB values even outside the painted score region.
+        // A literal copy preserves those original edge/wing pixels bit-for-bit.
+        for(int yy=0;yy<210;yy++)for(int xx=0;xx<367;xx++)
+            cleaned.setRGB(xx,yy,original.getRGB(xx,yy));
         Graphics2D g=cleaned.createGraphics();
-        g.drawImage(original,0,0,null);
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);
         final int[][] bounds={
             {91,27,276,150},{106,28,264,143},{106,31,267,135},
