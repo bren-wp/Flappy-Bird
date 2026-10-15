@@ -185,8 +185,8 @@ class RebuildWorlds {
             {103,30,193,92},{113,29,209,95},{127,30,209,91}
         };
         final int[][] right={
-            {108,30,160,93},{110,30,165,105},{115,30,172,105},
-            {110,30,162,95},{115,30,180,102},{111,30,161,95}
+            {108,30,160,93},{106,30,165,102},{106,30,171,102},
+            {110,30,162,95},{112,30,181,94},{111,30,161,95}
         };
         for(int side=0;side<2;side++){
             String name=side==0?"left":"right";
@@ -210,7 +210,17 @@ class RebuildWorlds {
                         int r=mix((a>>>16)&255,(b>>>16)&255,fraction);
                         int g=mix((a>>>8)&255,(b>>>8)&255,fraction);
                         int blue=mix(a&255,b&255,fraction);
-                        int repl=(r<<16)|(g<<8)|blue;
+                        // Worlds 2/3/5 have ornate gem borders intersecting
+                        // horizontal samples. A stable navy-field source
+                        // avoids cyan/magenta bands across cleaned digits.
+                        if(side==1 && (world==2 || world==3 || world==5)){
+                            int sampleX=world==2?160:(world==3?165:174);
+                            int sampleY=Math.min(87,Math.max(36,y));
+                            int navy=input.getRGB(sampleX,sampleY);
+                            r=(navy>>>16)&255;
+                            g=(navy>>>8)&255;
+                            blue=navy&255;
+                        }
                         int outR=mix((original>>>16)&255,r,blend);
                         int outG=mix((original>>>8)&255,g,blend);
                         int outB=mix(original&255,blue,blend);
