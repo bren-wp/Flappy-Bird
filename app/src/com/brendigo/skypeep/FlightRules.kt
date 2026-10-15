@@ -1,6 +1,5 @@
 package com.brendigo.skypeep
 
-import kotlin.math.abs
 import kotlin.math.max
 
 /** Pure gameplay geometry shared by rendering and deterministic unit tests. */
@@ -18,6 +17,10 @@ internal object FlightRules {
     fun overlapsPickup(
         playerX: Float, playerY: Float, pickupX: Float, pickupY: Float,
         radiusX: Float, radiusY: Float
-    ): Boolean = abs(playerX - pickupX) <= radiusX &&
-        abs(playerY - pickupY) <= radiusY
+    ): Boolean {
+        if (radiusX <= 0f || radiusY <= 0f) return false
+        val dx = (playerX - pickupX) / radiusX
+        val dy = (playerY - pickupY) / radiusY
+        return dx * dx + dy * dy <= 1f
+    }
 }

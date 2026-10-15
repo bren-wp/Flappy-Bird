@@ -52,14 +52,50 @@ class RebuildWorlds {
         return shadow?new Color(129,209,243,43):new Color(255,255,255,91);
     }
     private static void cloud(Graphics2D g,int world,int cx,int cy,double scale) {
+        // Union the lobes into one silhouette BEFORE applying transparency.
+        // Alpha-compositing individual ellipses produced visibly repeated circles.
         double rx=110*scale,ry=53*scale;
-        g.setColor(cloudColor(world,true));
-        g.fill(new Ellipse2D.Double(cx-rx,cy-ry*.3,rx*2,ry*1.25));
-        g.setColor(cloudColor(world,false));
+        java.awt.geom.Area silhouette=new java.awt.geom.Area(
+            new Ellipse2D.Double(cx-rx,cy-ry*.3,rx*2,ry*1.25));
         double[][] forms={{-.64,-.1,.75},{-.2,-.40,1.05},{.3,-.53,1.12},{.71,-.07,.80}};
         for(double[] f:forms){
             double r=f[2]*ry;
-            g.fill(new Ellipse2D.Double(cx+f[0]*rx-r,cy+f[1]*ry-r,2*r,2*r));
+            silhouette.add(new java.awt.geom.Area(
+                new Ellipse2D.Double(cx+f[0]*rx-r,cy+f[1]*ry-r,2*r,2*r)));
+        }
+        g.setColor(cloudColor(world,true));
+        g.fill(silhouette.createTransformedArea(
+            java.awt.geom.AffineTransform.getTranslateInstance(0,6*scale)));
+        g.setColor(cloudColor(world,false));
+        g.fill(silhouette);
+    }
+
+    private static void distantRidge(Graphics2D g,int world,int width,int height) {
+        // Subtle silhouettes restore depth to previously damaged sky corridors.
+        // Preserved side islands and waterfalls remain actual reference pixels.
+        final boolean night=world==5, sunset=world==6;
+        int[][] shades=night
+            ?new int[][]{{51,82,187,38},{36,75,167,48}}
+            :sunset?new int[][]{{239,148,102,43},{227,131,96,52}}
+            :new int[][]{{77,160,224,43},{62,137,203,54}};
+        for(int layer=0;layer<2;layer++){
+            int horizon=(int)(height*(layer==0?.71:.80));
+            double shift=world*24+layer*41;
+            Path2D.Double line=new Path2D.Double();
+            line.moveTo(-12,height);
+            line.lineTo(-12,horizon+80);
+            for(int x=-12;x<width+75;x+=68){
+                double h=53+Math.abs(Math.sin(x*.014+shift*.1))*76;
+                if(night)h*=.85;
+                if(sunset)h*=1.20;
+                line.lineTo(x+24,horizon-h);
+                line.lineTo(x+69,horizon+9);
+            }
+            line.lineTo(width+12,height);
+            line.closePath();
+            int[] col=shades[layer];
+            g.setColor(new Color(col[0],col[1],col[2],col[3]));
+            g.fill(line);
         }
     }
     private static BufferedImage sky(int w,int h,int world) {
@@ -76,6 +112,7 @@ class RebuildWorlds {
                 mix(c[k][1],c[k+1][1],t),mix(c[k][2],c[k+1][2],t)));
             g.drawLine(0,y,w,y);
         }
+        distantRidge(g,world,w,h);
         int[][] clouds={{166,285,65},{414,385,38},{290,865,70},
             {498,1007,65},{185,1115,47},{421,635,30}};
         for(int[] cdata:clouds)cloud(g,world,cdata[0],cdata[1],cdata[2]/100.);

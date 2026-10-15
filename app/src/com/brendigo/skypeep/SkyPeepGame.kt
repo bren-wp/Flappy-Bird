@@ -452,9 +452,16 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
                 finish(false)
                 return
             }
-            if (!gate.coinTaken && gate.x+gateWidth*.5f<BIRD_X+BIRD_W &&
-                gate.x+gateWidth*.5f>BIRD_X &&
-                kotlin.math.abs((birdY+BIRD_H*.5f)-gate.centerY)<125f) {
+            // Match the actual drawn coin centre and avoid collecting an
+            // item solely because the gate crosses the bird's horizontal band.
+            if (!gate.coinTaken && FlightRules.overlapsPickup(
+                playerX = BIRD_X + BIRD_W * .5f,
+                playerY = birdY + BIRD_H * .5f,
+                pickupX = gate.x + 118f,
+                pickupY = gate.centerY + 9f,
+                radiusX = 128f,
+                radiusY = 102f
+            )) {
                 gate.coinTaken=true
                 coins+=5
                 earnedCoins+=5
