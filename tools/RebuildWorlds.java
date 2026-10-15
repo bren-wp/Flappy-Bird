@@ -241,6 +241,65 @@ class RebuildWorlds {
         }
     }
 
+
+    /**
+     * Render a blank, world-matched score face onto the original winged header.
+     * Unlike the prior generic in-game badge, the six faces are built once and
+     * retain all untouched illustration pixels (wings, ribbons, level names).
+     * Source PNGs remain immutable: only Gradle's generated assets are changed.
+     */
+    private static void cleanScoreHeader(Path assets,int world) throws IOException {
+        Path file=assets.resolve("hud_score_"+world+".png");
+        BufferedImage original=ImageIO.read(file.toFile());
+        if(original==null || original.getWidth()!=367 || original.getHeight()!=210)
+            throw new IOException("Unexpected illustrated score header: "+file);
+        BufferedImage cleaned=new BufferedImage(367,210,BufferedImage.TYPE_INT_ARGB);
+        // Graphics2D.drawImage() composites semi-transparent source pixels,
+        // changing exact ARGB values even outside the painted score region.
+        // A literal copy preserves those original edge/wing pixels bit-for-bit.
+        for(int yy=0;yy<210;yy++)for(int xx=0;xx<367;xx++)
+            cleaned.setRGB(xx,yy,original.getRGB(xx,yy));
+        Graphics2D g=cleaned.createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);
+        final int[][] bounds={
+            {91,27,276,150},{106,28,264,143},{106,31,267,135},
+            {108,29,261,122},{120,27,257,116},{105,24,272,146}
+        };
+        final int[][] top={
+            {28,151,231},{234,250,255},{110,229,251},
+            {28,82,132},{20,218,248},{19,200,246}
+        };
+        final int[][] bottom={
+            {5,64,133},{183,230,255},{33,169,233},
+            {11,44,87},{0,133,223},{1,91,191}
+        };
+        final int[][] edges={
+            {7,57,96},{16,47,97},{11,64,107},
+            {11,35,73},{11,35,85},{7,42,97}
+        };
+        int[] b=bounds[world-1], a=top[world-1], c=bottom[world-1], e=edges[world-1];
+        int x=b[0],y=b[1],w=b[2]-b[0],h=b[3]-b[1];
+        RoundRectangle2D.Float face=new RoundRectangle2D.Float(x,y,w,h,36,36);
+        g.setPaint(new GradientPaint(x,y,new Color(a[0],a[1],a[2]),x,y+h,
+            new Color(c[0],c[1],c[2])));
+        g.fill(face);
+        g.setStroke(new BasicStroke(3.5f,BasicStroke.CAP_ROUND,BasicStroke.JOIN_ROUND));
+        g.setColor(new Color(e[0],e[1],e[2]));
+        g.draw(face);
+        g.setColor(new Color(236,251,255,190));
+        g.setStroke(new BasicStroke(1.8f,BasicStroke.CAP_ROUND,BasicStroke.JOIN_ROUND));
+        g.draw(new Arc2D.Float(x+11,y+8,w-22,52,192,155,Arc2D.OPEN));
+        g.dispose();
+        // Safety invariant: changing any part of the original wings, ribbon,
+        // level-name art or transparent crop OUTSIDE this inset fails the build.
+        for(int yy=0;yy<210;yy++)for(int xx=0;xx<367;xx++)
+            if((xx<x-3 || xx>b[2]+3 || yy<y-3 || yy>b[3]+3) &&
+                original.getRGB(xx,yy)!=cleaned.getRGB(xx,yy))
+                throw new IOException("Score header changed outside inset: "+file);
+        if(!ImageIO.write(cleaned,"png",file.toFile()) || Files.size(file)<28000)
+            throw new IOException("Invalid generated score header: "+file);
+    }
+
     public static void main(String[] args) throws Exception {
         if(args.length!=1) throw new IllegalArgumentException(
             "Usage: java -Djava.awt.headless=true tools/RebuildWorlds.java <assets-directory>");
@@ -249,7 +308,8 @@ class RebuildWorlds {
             rebuild(path,level);
             removePillarHeader(Path.of(args[0]),level);
             cleanHudCounters(Path.of(args[0]),level);
-            System.out.println("CLEAN WORLD "+level+" "+Files.size(path)+" bytes; clean HUD wallet");
+            cleanScoreHeader(Path.of(args[0]),level);
+            System.out.println("CLEAN WORLD "+level+" "+Files.size(path)+" bytes; wallets and score face restored");
         }
     }
 }

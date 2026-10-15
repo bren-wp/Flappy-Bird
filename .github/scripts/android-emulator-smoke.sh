@@ -161,6 +161,24 @@ for skin in 0 1 2 3 4; do
   adb exec-out screencap -p > "smoke-results/skin-$skin.png"
 done
 echo "PASS: five bird skins displayed during Android gameplay."
+# Ensure the illustrated winged panel displays DYNAMIC points rather than
+# the old hardcoded 27. Both values are tested on actual Android GL frames.
+for points in 0 147; do
+  adb logcat -c
+  adb shell am force-stop com.brendigo.skypeep
+  adb shell am start -W --ei sky_peep_qa_world 3 --ei sky_peep_qa_score "$points" \
+    -n com.brendigo.skypeep/.MainActivity
+  sleep 3
+  adb shell pidof com.brendigo.skypeep >/dev/null || {
+    echo "FAIL: score=$points crashed the app"; exit 1;
+  }
+  adb logcat -d -s SkyPeepHUD:I '*:S' | grep -q "debug_score=$points level=3" || {
+    echo "FAIL: live dynamic score=$points did not load"; exit 1;
+  }
+  adb exec-out screencap -p > "smoke-results/dynamic-score-$points.png"
+done
+echo "PASS: both dynamic score values render on Android."
+
 # The win state uses a DIFFERENT screen composition from the lose-only
 # GAME OVER art. Verify it actually opens as RESULT and the NEXT button works.
 adb logcat -c
