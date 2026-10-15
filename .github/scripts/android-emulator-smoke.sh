@@ -16,7 +16,13 @@ test -s "$apk" || { echo "Missing APK: $apk"; find smoke-artifacts -type f; exit
 
 adb logcat -c
 adb install -r "$apk"
+adb shell settings put secure immersive_mode_confirmations confirmed || true
 adb shell am start -W -n com.brendigo.skypeep/.MainActivity
+# Dismiss the emulator's one-time Android immersive-mode tutorial.
+screen_size="$(adb shell wm size | grep -oE '[0-9]+x[0-9]+' | tail -n 1)"
+screen_w="${screen_size%x*}"
+screen_h="${screen_size#*x}"
+adb shell input tap "$((screen_w * 85 / 100))" "$((screen_h * 26 / 100))" || true
 sleep 12
 
 if ! adb shell pidof com.brendigo.skypeep >/dev/null; then
@@ -57,25 +63,32 @@ capture() {
     echo "FAIL: crashed while opening $1"
     exit 1
   }
+  local last
+  last="$(adb logcat -d -s SkyPeepNav:I '*:S' | grep 'screen=' | tail -n 1 || true)"
+  echo "SkyPeep navigation checkpoint: $1 => $last"
+  if [[ -n "${2:-}" && "$last" != *"screen=$2"* ]]; then
+    echo "FAIL: expected $2 after navigating $1"
+    exit 1
+  fi
   adb exec-out screencap -p > "smoke-results/$1.png"
 }
 tap_ui 270 1210
-capture levels
+capture levels MAP
 tap_ui 95 1540
-capture map-back
+capture map-back MENU
 tap_ui 660 1230
-capture skins
+capture skins SKINS
 tap_ui 100 1560
-capture skins-back
+capture skins-back MENU
 tap_ui 660 1400
-capture settings
+capture settings SETTINGS
 tap_ui 465 1380
-capture settings-back
+capture settings-back MENU
 tap_ui 470 1000
-capture gameplay
+capture gameplay PLAY
 tap_ui 868 65
-capture pause
+capture pause PAUSE
 tap_ui 460 1040
-capture pause-home
+capture pause-home MENU
 echo "PASS: all major SkyPeep screens launched without process death."
 echo "PASS: Android app process survives boot and splash navigation."
