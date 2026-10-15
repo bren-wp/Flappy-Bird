@@ -39,4 +39,43 @@ if ! adb shell pidof com.brendigo.skypeep >/dev/null; then
 fi
 
 adb exec-out screencap -p > smoke-results/menu.png
+
+# Navigate all major screens and capture their real emulator rendering.
+# UI coordinates use the original 941x1672 reference image's top-left origin.
+tap_ui() {
+  local x="$1" top="$2"
+  local canvas_h=$(( w * 1672 / 941 ))
+  if (( canvas_h > h )); then canvas_h="$h"; fi
+  local canvas_w=$(( canvas_h * 941 / 1672 ))
+  local offset_x=$(( (w - canvas_w) / 2 ))
+  local offset_y=$(( (h - canvas_h) / 2 ))
+  adb shell input tap "$(( offset_x + x*canvas_w/941 ))" "$(( offset_y + top*canvas_h/1672 ))"
+}
+capture() {
+  sleep 2
+  adb shell pidof com.brendigo.skypeep >/dev/null || {
+    echo "FAIL: crashed while opening $1"
+    exit 1
+  }
+  adb exec-out screencap -p > "smoke-results/$1.png"
+}
+tap_ui 270 1210
+capture levels
+tap_ui 95 1540
+capture map-back
+tap_ui 660 1230
+capture skins
+tap_ui 100 1560
+capture skins-back
+tap_ui 660 1400
+capture settings
+tap_ui 465 1380
+capture settings-back
+tap_ui 470 1000
+capture gameplay
+tap_ui 868 65
+capture pause
+tap_ui 460 1040
+capture pause-home
+echo "PASS: all major SkyPeep screens launched without process death."
 echo "PASS: Android app process survives boot and splash navigation."
