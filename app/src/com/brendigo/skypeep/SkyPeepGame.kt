@@ -807,10 +807,10 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
                 batch.draw(tx,132f,y+48f,90f,74f)
                 batch.color=Color.WHITE
             }
-            fitted(offer.name.uppercase(Locale.ROOT),y+121f,fontSmall,1.14f,350f,405f,Color.valueOf("5B3526"))
+            fitted(offer.name.uppercase(Locale.ROOT),y+121f,fontSmall,1.10f,322f,410f,Color.valueOf("5B3526"))
             val price=if(offer.price==0) "INCLUDED"
-                else if(offer.currency==TrailCurrency.GEMS) "\${offer.price} GEMS"
-                else "\${offer.price} COINS"
+                else if(offer.currency==TrailCurrency.GEMS) "${offer.price} GEMS"
+                else "${offer.price} COINS"
             fitted(price,y+66f,fontSmall,1.05f,342f,405f,Color.valueOf("734428"))
             badge(if(selectedTrail==offer.id)"green" else if(ownedTrails[offer.id])"blue" else "wood",
                 594f,y+27f,224f,118f)
