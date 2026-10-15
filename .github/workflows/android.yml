@@ -67,3 +67,64 @@ jobs:
             --title "SkyPeep $VERSION" \
             --prerelease \
             --notes 'Android preview featuring all six original 2D worlds, dynamic world and menu texture loading, corrected gate-width collisions, and safe background pause. Debug APK is for testing. The AAB is UNSIGNED and cannot be uploaded to Google Play without app signing. Visual and device smoke testing is still required.'
+  emulator-smoke:
+    name: Boot and launch Android app
+    needs: android
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: actions/download-artifact@v4
+        with:
+          name: SkyPeep-Android-${{ github.run_number }}
+          path: smoke-artifacts
+      - name: Enable KVM acceleration
+        run: |
+          if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
+      - name: Android emulator startup smoke
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          cores: 2
+          ram-size: 2048M
+          heap-size: 512M
+          disable-animations: true
+          emulator-options: -no-window -no-audio -no-snapshot -no-boot-anim -gpu swiftshader_indirect
+          script: |
+            set -e
+            mkdir -p smoke-results
+            adb logcat -c
+            adb install -r smoke-artifacts/app-debug.apk
+            adb shell am start -W -n com.brendigo.skypeep/.MainActivity
+            sleep 12
+            adb logcat -d -v time > smoke-results/logcat.txt
+            adb shell dumpsys activity activities > smoke-results/activities.txt
+            adb exec-out screencap -p > smoke-results/startup.png || true
+            if ! adb shell pidof com.brendigo.skypeep; then
+              echo 'FAIL: SkyPeep process died during launch'
+              grep -A 70 -B 12 -E 'FATAL EXCEPTION|AndroidRuntime|com.brendigo.skypeep|libgdx' smoke-results/logcat.txt | tail -200 || true
+              exit 1
+            fi
+            adb shell input tap 540 1490
+            sleep 3
+            if ! adb shell pidof com.brendigo.skypeep; then
+              echo 'FAIL: SkyPeep crashed navigating from splash'
+              exit 1
+            fi
+            adb exec-out screencap -p > smoke-results/menu.png || true
+            echo 'PASS: SkyPeep launched and survived initial navigation'
+      - name: Upload emulator logs and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SkyPeep-Emulator-Smoke-${{ github.run_number }}
+          path: smoke-results/
+          if-no-files-found: warn
