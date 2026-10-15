@@ -25,7 +25,8 @@ Fly through **Sky Start**, **Cloud Pass**, **Crystal Drop**, **Wind Gate**, **Mo
 - 🐦 Three-frame character flight animation
 - ✨ Collectible coins, gems and alternate bird skins
 - 🏆 Personal bests and locally saved progress
-- 🔊 Music, sound effects and pause/resume
+- 🔊 Music, sound effects and safe pause/resume when returning to Android
+- 🚀 Lower texture-memory usage with active-world-only assets
 - 📤 Share your score through Android
 
 ## Android builds

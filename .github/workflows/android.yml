@@ -29,9 +29,21 @@ jobs:
           test -s app/build/outputs/apk/debug/app-debug.apk
           test -s app/build/outputs/bundle/release/app-release.aab
           unzip -t app/build/outputs/apk/debug/app-debug.apk > /dev/null
-          for asset in screen_menu.jpg screen_map.jpg screen_skins.jpg bird_idle.png \
-                       pillar_1_top.png pillar_6_bottom.png bg_6.jpg ui_36.fnt music.ogg; do
-            unzip -Z -1 app/build/outputs/apk/debug/app-debug.apk | grep -Fxq "assets/$asset" \
+          unzip -Z -1 app/build/outputs/apk/debug/app-debug.apk > "$RUNNER_TEMP/skypeep-apk-files.txt"
+          for screen in splash menu map pause over skins; do
+            grep -Fxq "assets/screen_$screen.jpg" "$RUNNER_TEMP/skypeep-apk-files.txt" || exit 1
+          done
+          for i in 1 2 3 4 5 6; do
+            for asset in "bg_$i.jpg" "pillar_${i}_top.png" "pillar_${i}_bottom.png" \
+                         "hud_left_$i.png" "hud_score_$i.png" \
+                         "hud_right_$i.png" "hud_pause_$i.png"; do
+              grep -Fxq "assets/$asset" "$RUNNER_TEMP/skypeep-apk-files.txt" \
+                || { echo "MISSING APK ASSET: $asset"; exit 1; }
+            done
+          done
+          for asset in bird_idle.png bird_up.png bird_down.png coin_asset.png gem_asset.png \
+                       ui_36.fnt ui_62.fnt music.ogg flap.wav coin.wav win.wav fail.wav click.wav; do
+            grep -Fxq "assets/$asset" "$RUNNER_TEMP/skypeep-apk-files.txt" \
               || { echo "MISSING APK ASSET: $asset"; exit 1; }
           done
           unzip -t app/build/outputs/bundle/release/app-release.aab > /dev/null
@@ -43,15 +55,15 @@ jobs:
             app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
       - name: Publish GitHub preview release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/feature/skypeep-android-foundation'
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feature/skypeep-v')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="v0.2.2-preview.${GITHUB_RUN_NUMBER}"
+          VERSION="v0.2.3-preview.${GITHUB_RUN_NUMBER}"
           gh release create "$VERSION" \
             app/build/outputs/apk/debug/app-debug.apk \
             app/build/outputs/bundle/release/app-release.aab \
             --target "$GITHUB_SHA" \
             --title "SkyPeep $VERSION" \
             --prerelease \
-            --notes 'Android preview of SkyPeep with original 2D visual assets, six level themes and game screens. Debug APK is for testing. The AAB is UNSIGNED and cannot be uploaded to Google Play without app signing. Visual and device smoke testing is still required.'
+            --notes 'Android preview featuring all six original 2D worlds, dynamic world texture loading, corrected gate-width collisions and safe background pause. Debug APK is for testing. The AAB is UNSIGNED and cannot be uploaded to Google Play without app signing. Visual and device smoke testing is still required.'
