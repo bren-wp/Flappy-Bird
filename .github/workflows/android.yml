@@ -106,11 +106,11 @@ jobs:
           if-no-files-found: warn
 
       - name: Publish GitHub release after emulator smoke
-        if: github.event_name == 'push' && github.ref == 'refs/heads/feature/skypeep-v0.3.2-trail-shop'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/fix/skypeep-v0.3.3-hud-counters'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="v0.3.2-preview.${GITHUB_RUN_NUMBER}"
+          VERSION="v0.3.3-preview.${GITHUB_RUN_NUMBER}"
           APK="$(find smoke-artifacts -type f -name 'app-debug.apk' -print -quit)"
           AAB="$(find smoke-artifacts -type f -name 'app-release.aab' -print -quit)"
           test -n "$APK" && test -n "$AAB"
@@ -120,4 +120,4 @@ jobs:
             --target "$GITHUB_SHA" \
             --title "SkyPeep $VERSION" \
             --prerelease \
-            --notes 'SkyPeep standalone Trail Shop: four animated flight trails, purchase and currency persistence, Android emulator navigation test, six worlds and five birds verified. Debug APK is for testing. The AAB is UNSIGNED and cannot be uploaded to Google Play without app signing. Visual and device smoke testing is still required.'
+            --notes 'SkyPeep HUD cleanup: preserve all six authentic illustrated coin and gem plates, replace baked-in 63/4 with dynamic counters and compact large-value formatting, check Android screenshots and full existing smoke. Debug APK is for testing. The AAB is UNSIGNED and cannot be uploaded to Google Play without app signing. Visual and device smoke testing is still required.'

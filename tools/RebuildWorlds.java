@@ -172,6 +172,65 @@ class RebuildWorlds {
             throw new IOException("Truncated illustrated pillar: "+file);
     }
 
+
+    /**
+     * Remove the hard-coded '63' and '4' from the six original wallet plates.
+     * Interpolate within carefully measured navy-field rectangles, preserving
+     * every pixel outside the ROI: gold coin, magenta gem, borders and corners.
+     * Source artwork stays immutable in the SHA-256 validated ZIP.
+     */
+    private static void cleanHudCounters(Path assets,int world) throws IOException {
+        final int[][] left={
+            {132,30,212,91},{113,30,206,105},{119,29,209,105},
+            {103,30,193,92},{113,29,209,95},{127,30,209,91}
+        };
+        final int[][] right={
+            {108,30,160,93},{110,30,165,105},{115,30,172,105},
+            {110,30,162,95},{115,30,180,102},{111,30,161,95}
+        };
+        for(int side=0;side<2;side++){
+            String name=side==0?"left":"right";
+            int[] box=(side==0?left:right)[world-1];
+            Path path=assets.resolve("hud_"+name+"_"+world+".png");
+            BufferedImage input=ImageIO.read(path.toFile());
+            int width=side==0?269:191, height=side==0?113:115;
+            if(input==null || input.getWidth()!=width || input.getHeight()!=height)
+                throw new IOException("Unexpected HUD crop size for "+path);
+            BufferedImage result=new BufferedImage(width,height,BufferedImage.TYPE_INT_ARGB);
+            for(int y=0;y<height;y++)for(int x=0;x<width;x++) {
+                int original=input.getRGB(x,y);
+                int color=original;
+                if(x>=box[0] && x<box[2] && y>=box[1] && y<box[3]) {
+                    double blend=Math.min(1.,Math.min(
+                        Math.min((x-box[0])/5.,(box[2]-1-x)/5.),
+                        Math.min((y-box[1])/4.,(box[3]-1-y)/4.)));
+                    if(blend>0) {
+                        double fraction=(x-box[0]+1.)/(box[2]-box[0]+1.);
+                        int a=input.getRGB(box[0]-1,y),b=input.getRGB(box[2],y);
+                        int r=mix((a>>>16)&255,(b>>>16)&255,fraction);
+                        int g=mix((a>>>8)&255,(b>>>8)&255,fraction);
+                        int blue=mix(a&255,b&255,fraction);
+                        int repl=(r<<16)|(g<<8)|blue;
+                        int outR=mix((original>>>16)&255,r,blend);
+                        int outG=mix((original>>>8)&255,g,blend);
+                        int outB=mix(original&255,blue,blend);
+                        color=(original&0xFF000000)|(outR<<16)|(outG<<8)|outB;
+                    }
+                }
+                result.setRGB(x,y,color);
+            }
+            // Pixel-by-pixel identity outside the intentional text region.
+            for(int y=0;y<height;y++)for(int x=0;x<width;x++)
+                if((x<box[0]||x>=box[2]||y<box[1]||y>=box[3])
+                    && input.getRGB(x,y)!=result.getRGB(x,y))
+                    throw new IOException("HUD icon or border modified: "+path);
+            if(!ImageIO.write(result,"png",path.toFile()))
+                throw new IOException("PNG encoder missing: "+path);
+            if(Files.size(path)<10000)
+                throw new IOException("HUD output suspiciously small: "+path);
+        }
+    }
+
     public static void main(String[] args) throws Exception {
         if(args.length!=1) throw new IllegalArgumentException(
             "Usage: java -Djava.awt.headless=true tools/RebuildWorlds.java <assets-directory>");
@@ -179,7 +238,8 @@ class RebuildWorlds {
             Path path=Path.of(args[0],"bg_"+level+".jpg");
             rebuild(path,level);
             removePillarHeader(Path.of(args[0]),level);
-            System.out.println("CLEAN WORLD "+level+" "+Files.size(path)+" bytes; cleaned top pillar");
+            cleanHudCounters(Path.of(args[0]),level);
+            System.out.println("CLEAN WORLD "+level+" "+Files.size(path)+" bytes; clean HUD wallet");
         }
     }
 }
