@@ -82,11 +82,11 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
-          target: google_apis
+          target: default
           arch: x86_64
-          profile: pixel_6
+          profile: pixel_2
           cores: 2
-          ram-size: 2048M
+          ram-size: 3072M
           heap-size: 512M
           disable-animations: true
           emulator-options: -no-window -no-audio -no-snapshot -no-boot-anim -gpu swiftshader_indirect
@@ -100,11 +100,11 @@ jobs:
           if-no-files-found: warn
 
       - name: Publish GitHub release after emulator smoke
-        if: github.event_name == 'push' && github.ref == 'refs/heads/fix/skypeep-startup-v0.2.5'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/feature/skypeep-v0.2.6-ui-parity'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="v0.2.5-preview.${GITHUB_RUN_NUMBER}"
+          VERSION="v0.2.6-preview.${GITHUB_RUN_NUMBER}"
           APK="$(find smoke-artifacts -type f -name 'app-debug.apk' -print -quit)"
           AAB="$(find smoke-artifacts -type f -name 'app-release.aab' -print -quit)"
           test -n "$APK" && test -n "$AAB"
@@ -114,4 +114,4 @@ jobs:
             --target "$GITHUB_SHA" \
             --title "SkyPeep $VERSION" \
             --prerelease \
-            --notes 'Android startup hotfix: native libgdx.so explicitly packaged for ARM and x86, with emulated startup testing and crash diagnostics. Debug APK is for testing. The AAB is UNSIGNED and cannot be uploaded to Google Play without app signing. Visual and device smoke testing is still required.'
+            --notes 'SkyPeep 2D interface polish: reference menus, dynamic HUD and rounded controls; Android emulator tested, debug APK and unsigned AAB. Debug APK is for testing. The AAB is UNSIGNED and cannot be uploaded to Google Play without app signing. Visual and device smoke testing is still required.'

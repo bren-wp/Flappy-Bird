@@ -55,12 +55,15 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
     private lateinit var fontSmall: BitmapFont
     private lateinit var fontLarge: BitmapFont
     private lateinit var solid: Texture
+    private val chrome = mutableMapOf<String, com.badlogic.gdx.graphics.g2d.NinePatch>()
+    private val chromeTextures = mutableMapOf<String, Texture>()
     private var music: Music? = null
     private val sounds = mutableMapOf<String, Sound>()
     private val tmp = GlyphLayout()
     private val touch = Vector2()
 
     private var screen = Screen.SPLASH
+    private var lastLoggedScreen: Screen? = null
     private var level = 1
     private var unlocked = 1
     private var resultWon = false
@@ -123,6 +126,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
         pixel.fill()
         solid = Texture(pixel)
         pixel.dispose()
+        prepareChrome()
         for (kind in arrayOf("flap", "coin", "win", "fail", "click")) {
             try { sounds[kind] = Gdx.audio.newSound(Gdx.files.internal("$kind.wav")) }
             catch (_: Exception) { /* audio is optional on unsupported devices */ }
@@ -187,6 +191,12 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
         handleInput()
         if (screen == Screen.PLAY) updateGame(delta)
         syncScreenArt()
+        if (screen != lastLoggedScreen) {
+            Gdx.app.log("SkyPeepNav","screen=" + screen.name)
+            lastLoggedScreen = screen
+        }
+        Gdx.gl.glClearColor(.16f,.67f,.96f,1f)
+        Gdx.gl.glClear(com.badlogic.gdx.graphics.GL20.GL_COLOR_BUFFER_BIT)
         viewport.apply()
         batch.projectionMatrix = camera.combined
         batch.begin()
@@ -201,8 +211,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
             Screen.SETTINGS -> { image("screen_menu", 0f, 0f, W, H); drawSettings() }
         }
         if (messageTimer > 0 && screen != Screen.PLAY) {
-            drawRect(100f, 1490f, W - 200f, 88f, Color(0.06f, 0.14f, 0.28f, .90f))
-            centered(message, 1525f, fontSmall)
+            badge("dark",110f,1375f,W-220f,103f)
+            fitted(message,1437f,fontSmall,1.4f,W-290f)
         }
         batch.end()
     }
@@ -355,7 +365,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
     private fun clickSettings(x: Float, y: Float) {
         playSound("click")
         when {
-            hit(x,y,160f,1145f,630f,165f) -> { screen=Screen.MENU; save() }
+            hit(x,y,160f,1280f,630f,240f) -> { screen=Screen.MENU; save() }
             hit(x,y,120f,555f,710f,118f) -> setMusic(!musicEnabled)
             hit(x,y,120f,698f,710f,117f) -> { effectsEnabled=!effectsEnabled; save() }
             hit(x,y,120f,840f,710f,120f) -> { vibrationEnabled=!vibrationEnabled; save() }
@@ -510,8 +520,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
         drawBird()
         drawHUD()
         if (readyForFirstTap) {
-            drawRect(195f, 345f, 555f, 96f, Color(.08f,.23f,.42f,.88f))
-            centered("TAP TO FLY", 410f, fontLarge)
+            badge("dark",290f,355f,360f,88f)
+            fitted("TAP TO FLY",412f,fontSmall,1.5f,331f)
         }
     }
 
@@ -538,12 +548,12 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
         image("hud_pause_$level", 811f, H-129f, 125f, 122f)
         image("hud_score_$level", 286f, H-218f, 367f, 210f)
         // Cover only the numeric text within the reference plates.
-        drawRect(122f, H-99f, 113f, 58f, Color(.075f,.20f,.37f,1f))
-        label(coins.toString(), 125f, H-55f, fontSmall)
-        drawRect(735f, H-98f, 61f, 54f, Color(.075f,.20f,.37f,1f))
-        label(gems.toString(), 736f, H-55f, fontSmall)
-        drawRect(393f, H-126f, 145f, 81f, Color(.075f,.38f,.72f,1f))
-        centered(score.toString(), H-62f, fontLarge)
+        badge("dark",126f,H-100f,113f,63f)
+        fitted(coins.toString(),H-55f,fontSmall,1.9f,103f,182f)
+        badge("dark",739f,H-99f,60f,63f)
+        fitted(gems.toString(),H-53f,fontSmall,1.9f,55f,767f)
+        badge("score",387f,H-133f,160f,101f)
+        fitted(score.toString(),H-59f,fontLarge,1.20f,153f)
     }
 
     private fun drawCoin(x:Float,y:Float,r:Float) {
@@ -556,10 +566,15 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
 
     private fun drawMenuWallet() {
         // Cover only screenshot mockup's sample numeric labels, retaining the original visual buttons.
-        drawRect(117f,H-102f,136f,66f,Color(.07f,.20f,.35f,1f))
-        label(coins.toString(),128f,H-54f,fontSmall)
-        drawRect(748f,H-103f,65f,66f,Color(.07f,.20f,.35f,1f))
-        label(gems.toString(),747f,H-54f,fontSmall)
+        // At the reference values preserve the screenshot pixels exactly.
+        if(coins!=1250) {
+            badge("dark",119f,H-103f,136f,65f)
+            fitted(coins.toString(),H-54f,fontSmall,1.9f,127f,186f)
+        }
+        if(gems!=75) {
+            badge("dark",743f,H-103f,76f,65f)
+            fitted(gems.toString(),H-54f,fontSmall,1.9f,69f,781f)
+        }
     }
 
     private fun drawMapProgress() {
@@ -568,8 +583,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
             floatArrayOf(670f,695f),floatArrayOf(360f,450f),floatArrayOf(733f,278f))
         for (i in 2..unlocked) {
             val p=badges[i-2]
-            drawRect(p[0]-46f,H-p[1]-42f,92f,75f,Color(.19f,.70f,.24f,.98f))
-            label("OK",p[0]-15f,H-p[1]+24f,fontSmall)
+            badge("green",p[0]-47f,H-p[1]-42f,94f,78f)
+            fitted("OK",H-p[1]+22f,fontSmall,1.3f,75f,p[0])
         }
         // The selected level is indicated when the user taps its island. The background map
         // is deliberately unobstructed, and PLAY always uses the selected unlocked level.
@@ -582,65 +597,136 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
             centered("3 STARS",H-708f,fontSmall)
         }
         // Static illustration labels remain; the actual run values replace sample values.
-        val panel=Color(.97f,.90f,.78f,1f)
-        drawRect(201f,H-947f,157f,95f,panel)
-        drawRect(399f,H-947f,165f,95f,panel)
-        drawRect(673f,H-947f,115f,95f,panel)
-        label(score.toString(),208f,H-873f,fontLarge)
-        label(best.toString(),410f,H-873f,fontLarge)
-        label(earnedCoins.toString(),668f,H-873f,fontLarge)
-        val progress = min(1f, score.toFloat() / targetScore())
-        drawRect(300f,H-1100f,455f,53f,Color(.42f,.43f,.48f,1f))
-        drawRect(302f,H-1097f,451f*progress,46f,Color(.12f,.58f,.93f,1f))
-        centered("$score / ${targetScore()}",H-1059f,fontSmall,526f)
-        if (resultWon) {
-            drawRect(319f,H-1438f,310f,182f,Color(.12f,.75f,.22f,.55f))
-            centered(if(level<MAX_LEVEL) "NEXT" else "REPLAY",H-1350f,fontSmall,475f)
+        badge("cream",201f,H-947f,153f,90f)
+        badge("cream",402f,H-947f,160f,90f)
+        badge("cream",665f,H-947f,122f,90f)
+        fitted(score.toString(),H-874f,fontLarge,1f,142f,277f,Color.valueOf("673A22"))
+        fitted(best.toString(),H-874f,fontLarge,1f,148f,483f,Color.valueOf("673A22"))
+        fitted(earnedCoins.toString(),H-874f,fontLarge,1f,112f,726f,Color.valueOf("673A22"))
+        val progress = min(1f,score.toFloat()/targetScore())
+        badge("dark",293f,H-1100f,463f,57f)
+        if(progress>.02f) badge("blue",299f,H-1095f,450f*progress,47f)
+        fitted("$score / ${targetScore()}",H-1058f,fontSmall,1.6f,409f,526f)
+        if(resultWon) {
+            badge("green",315f,H-1432f,316f,176f)
+            fitted(if(level<MAX_LEVEL) "NEXT" else "REPLAY",H-1350f,fontSmall,1.65f,300f,475f)
         }
     }
 
     private fun drawPauseToggles() {
-        // Dynamic ON/OFF text overlays the illustrative reference controls.
-        drawRect(559f, H-1226f, 80f, 57f, Color(.97f,.88f,.70f,.98f))
-        label(if (musicEnabled) "ON" else "OFF", 569f, H-1180f, fontSmall)
-        drawRect(559f, H-1348f, 80f, 57f, Color(.97f,.88f,.70f,.98f))
-        label(if (effectsEnabled) "ON" else "OFF", 569f, H-1304f, fontSmall)
+        toggle(565f,H-1218f,musicEnabled)
+        toggle(565f,H-1324f,effectsEnabled)
     }
 
     private fun drawSkins() {
-        drawRect(118f,H-105f,165f,66f,Color(.20f,.11f,.08f,1f))
-        label(coins.toString(),123f,H-57f,fontSmall)
-        drawRect(728f,H-105f,115f,66f,Color(.20f,.11f,.08f,1f))
-        label(gems.toString(),730f,H-57f,fontSmall)
+        if(coins!=1250) {
+            badge("wood",120f,H-103f,164f,65f)
+            fitted(coins.toString(),H-56f,fontSmall,1.8f,153f,199f)
+        }
+        if(gems!=89) {
+            badge("wood",733f,H-103f,111f,65f)
+            fitted(gems.toString(),H-56f,fontSmall,1.8f,104f,788f)
+        }
         if (selectedSkin!=0) {
-            drawRect(345f,H-817f,275f,57f,Color(.96f,.86f,.64f,1f))
-            centered(skinName(selectedSkin).uppercase(Locale.ROOT),H-772f,fontSmall)
+            badge("cream",341f,H-821f,282f,68f)
+            fitted(skinName(selectedSkin).uppercase(Locale.ROOT),H-775f,fontSmall,1.3f,265f,W/2f,Color.valueOf("603F2B"))
         }
         for (i in 1..4) {
             if (ownedSkins[i]) {
                 val x=(i-1)*235f+25f
-                drawRect(x,H-1456f,188f,94f,Color(.13f,.68f,.23f,.95f))
-                label(if(selectedSkin==i) "EQUIPPED" else "EQUIP",x+9f,H-1398f,fontSmall)
+                badge("green",x,H-1456f,188f,94f)
+                fitted(if(selectedSkin==i) "EQUIPPED" else "EQUIP",H-1398f,fontSmall,1.1f,171f,x+94f)
             }
         }
     }
 
     private fun drawSettings() {
-        drawRect(0f,0f,W,H,Color(0f,.05f,.13f,.72f))
-        drawRect(86f,390f,769f,1010f,Color(.95f,.89f,.75f,.98f))
-        drawRect(106f,1240f,728f,142f,Color(.20f,.55f,.90f,1f))
-        centered("SETTINGS",1315f,fontLarge)
-        val names=arrayOf("MUSIC", "SOUND EFFECTS", "VIBRATION", "LANGUAGE")
-        val value=arrayOf(if(musicEnabled) "ON" else "OFF",if(effectsEnabled) "ON" else "OFF",
-            if(vibrationEnabled) "ON" else "OFF", "ENGLISH")
-        for (i in names.indices) {
-            val y=1003f-i*143f
-            drawRect(135f,y,665f,110f,Color(.11f,.36f,.67f,.99f))
-            label(names[i],160f,y+72f,fontSmall)
-            label(value[i],if(i==3) 610f else 690f,y+72f,fontSmall)
+        // Branded parchment and wooden controls, shared with the PAUSED art style.
+        drawRect(0f,0f,W,H,Color(0f,.07f,.17f,.68f))
+        badge("cream",91f,348f,759f,1020f)
+        badge("wood",132f,1214f,677f,139f)
+        fitted("SETTINGS",1340f,fontLarge,1.55f,627f)
+        val names=arrayOf("MUSIC","SOUND EFFECTS","VIBRATION","LANGUAGE")
+        for(i in names.indices) {
+            val yy=1010f-i*143f
+            badge("wood",137f,yy,666f,119f)
+            label(names[i],162f,yy+77f,fontSmall)
+            if(i<3) {
+                toggle(657f,yy+28f,when(i) {
+                    0 -> musicEnabled
+                    1 -> effectsEnabled
+                    else -> vibrationEnabled
+                })
+            } else fitted("ENGLISH",yy+77f,fontSmall,1.1f,124f,715f)
         }
-        drawRect(195f,355f,553f,140f,Color(.22f,.70f,.25f,1f))
-        centered("BACK",446f,fontLarge)
+        badge("blue",137f,421f,310f,116f)
+        fitted("BEST " + best,494f,fontSmall,1.4f,285f,292f)
+        badge("green",492f,421f,313f,116f)
+        fitted("WORLDS " + unlocked + "/6",494f,fontSmall,1.3f,290f,649f)
+        badge("green",185f,243f,575f,129f)
+        fitted("BACK",352f,fontLarge,1.30f,531f)
+    }
+
+    /** Rounded, antialiased-like gradient chrome rendered once, reused on each screen. */
+    private fun prepareChrome() {
+        val palette=mapOf(
+            "dark" to Color.valueOf("103963"),
+            "score" to Color.valueOf("1B8FDC"),
+            "green" to Color.valueOf("48C62D"),
+            "cream" to Color.valueOf("F6E4C4"),
+            "wood" to Color.valueOf("92552F"),
+            "blue" to Color.valueOf("169CE8"),
+            "red" to Color.valueOf("C83A40")
+        )
+        for ((name,base) in palette) {
+            val pix=Pixmap(192,80,Pixmap.Format.RGBA8888)
+            pix.setColor(0f,0f,0f,0f)
+            pix.fill()
+            for(y in 0 until 80) for(x in 0 until 192) {
+                val dx=max(0f,kotlin.math.abs(x-95.5f)-64.5f)
+                val dy=max(0f,kotlin.math.abs(y-39.5f)-9.5f)
+                val d=kotlin.math.sqrt(dx*dx+dy*dy)
+                if(d>30f) continue
+                val c=if(d>26f) Color(.09f,.14f,.22f,1f) else {
+                    val brightness=if(y<20) 1.12f else if(y>65) .88f else 1f
+                    Color((base.r*brightness).coerceIn(0f,1f),
+                          (base.g*brightness).coerceIn(0f,1f),
+                          (base.b*brightness).coerceIn(0f,1f),1f)
+                }
+                pix.drawPixel(x,y,Color.rgba8888(c))
+            }
+            val image=Texture(pix).also {
+                it.setFilter(Texture.TextureFilter.Linear,Texture.TextureFilter.Linear)
+            }
+            chromeTextures[name]=image
+            chrome[name]=com.badlogic.gdx.graphics.g2d.NinePatch(image,32,32,32,32)
+            pix.dispose()
+        }
+    }
+
+    private fun badge(name:String,x:Float,y:Float,width:Float,height:Float) {
+        if(width<=0f || height<=0f) return
+        if(width>=64f && height>=64f) chrome[name]?.draw(batch,x,y,width,height)
+        else chromeTextures[name]?.let { batch.draw(it,x,y,width,height) }
+    }
+
+    private fun toggle(x:Float,y:Float,enabled:Boolean) {
+        badge(if(enabled) "green" else "red",x,y,112f,61f)
+        badge("cream",x+(if(enabled) 57f else 7f),y+7f,48f,47f)
+    }
+
+    private fun fitted(value:String,baseline:Float,font:BitmapFont,size:Float,
+                       available:Float,centerX:Float=W/2f,tint:Color=Color.WHITE) {
+        val savedScale=font.data.scaleX
+        val savedColor=Color(font.color)
+        font.data.setScale(size)
+        tmp.setText(font,value)
+        if(tmp.width>available) font.data.setScale(size*available/tmp.width)
+        tmp.setText(font,value)
+        font.color=tint
+        font.draw(batch,value,centerX-tmp.width/2f,baseline)
+        font.color=savedColor
+        font.data.setScale(savedScale)
     }
 
     private fun drawRect(x:Float,y:Float,w:Float,h:Float,color:Color) {
@@ -698,6 +784,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
         if (::fontSmall.isInitialized)fontSmall.dispose()
         if (::fontLarge.isInitialized)fontLarge.dispose()
         if (::solid.isInitialized)solid.dispose()
+        chromeTextures.values.forEach { it.dispose() }
         if (::batch.isInitialized)batch.dispose()
     }
 }
