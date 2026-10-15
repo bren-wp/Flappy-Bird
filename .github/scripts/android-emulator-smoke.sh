@@ -22,8 +22,10 @@ adb shell am start -W -n com.brendigo.skypeep/.MainActivity
 screen_size="$(adb shell wm size | grep -oE '[0-9]+x[0-9]+' | tail -n 1)"
 screen_w="${screen_size%x*}"
 screen_h="${screen_size#*x}"
+# Android may present the immersive-mode tutorial several seconds AFTER launch.
+sleep 7
 adb shell input tap "$((screen_w * 85 / 100))" "$((screen_h * 26 / 100))" || true
-sleep 12
+sleep 3
 
 if ! adb shell pidof com.brendigo.skypeep >/dev/null; then
   echo "FAIL: SkyPeep process crashed during launch"
@@ -37,12 +39,23 @@ adb exec-out screencap -p > smoke-results/splash.png
 size="$(adb shell wm size | grep -oE '[0-9]+x[0-9]+' | tail -n 1)"
 w="${size%x*}"
 h="${size#*x}"
-adb shell input tap "$((w / 2))" "$((h * 84 / 100))"
-sleep 5
-if ! adb shell pidof com.brendigo.skypeep >/dev/null; then
-  echo "FAIL: SkyPeep crashed after tapping the splash screen"
+# Retry opening the main menu if the emulator was still showing the
+# system immersive help overlay rather than receiving the first touch.
+menu_ready=false
+for attempt in 1 2 3 4 5; do
+  adb shell input tap "$((w / 2))" "$((h * 82 / 100))"
+  sleep 2
+  last="$(adb logcat -d -s SkyPeepNav:I '*:S' | grep 'screen=' | tail -n 1 || true)"
+  echo "SkyPeep entry attempt $attempt => $last"
+  if [[ "$last" == *"screen=MENU"* ]]; then menu_ready=true; break; fi
+  adb shell input tap "$((w * 85 / 100))" "$((h * 26 / 100))" || true
+  sleep 1
+done
+if [[ "$menu_ready" != true ]]; then
+  echo "FAIL: SkyPeep did not enter the main menu"
   exit 1
 fi
+adb shell pidof com.brendigo.skypeep >/dev/null || { echo "SkyPeep process terminated"; exit 1; }
 
 adb exec-out screencap -p > smoke-results/menu.png
 
