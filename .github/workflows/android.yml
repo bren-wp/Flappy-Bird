@@ -94,7 +94,9 @@ jobs:
             set -e
             mkdir -p smoke-results
             adb logcat -c
-            adb install -r smoke-artifacts/app-debug.apk
+            APK="$(find smoke-artifacts -type f -name 'app-debug.apk' -print -quit)"
+            test -n "$APK" || { echo 'Built APK not found in downloaded artifact'; find smoke-artifacts -type f; exit 1; }
+            adb install -r "$APK"
             adb shell am start -W -n com.brendigo.skypeep/.MainActivity
             sleep 12
             adb logcat -d -v time > smoke-results/logcat.txt
@@ -127,9 +129,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION="v0.2.5-preview.${GITHUB_RUN_NUMBER}"
+          APK="$(find smoke-artifacts -type f -name 'app-debug.apk' -print -quit)"
+          AAB="$(find smoke-artifacts -type f -name 'app-release.aab' -print -quit)"
+          test -n "$APK" && test -n "$AAB"
           gh release create "$VERSION" \
-            smoke-artifacts/app-debug.apk \
-            smoke-artifacts/app-release.aab \
+            "$APK" \
+            "$AAB" \
             --target "$GITHUB_SHA" \
             --title "SkyPeep $VERSION" \
             --prerelease \
