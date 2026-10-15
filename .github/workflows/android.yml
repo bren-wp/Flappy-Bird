@@ -2,7 +2,7 @@ name: Android build & preview release
 
 on:
   push:
-    branches: [main, 'feature/**']
+    branches: [main, 'feature/**', 'fix/**']
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -58,19 +58,6 @@ jobs:
             app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
-      - name: Publish GitHub preview release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/fix/skypeep-startup-v0.2.5'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          VERSION="v0.2.5-preview.${GITHUB_RUN_NUMBER}"
-          gh release create "$VERSION" \
-            app/build/outputs/apk/debug/app-debug.apk \
-            app/build/outputs/bundle/release/app-release.aab \
-            --target "$GITHUB_SHA" \
-            --title "SkyPeep $VERSION" \
-            --prerelease \
-            --notes 'Android startup hotfix: native libgdx.so explicitly packaged for ARM and x86, with emulated startup testing and crash diagnostics. Debug APK is for testing. The AAB is UNSIGNED and cannot be uploaded to Google Play without app signing. Visual and device smoke testing is still required.'
   emulator-smoke:
     name: Boot and launch Android app
     needs: android
@@ -133,3 +120,17 @@ jobs:
           name: SkyPeep-Emulator-Smoke-${{ github.run_number }}
           path: smoke-results/
           if-no-files-found: warn
+
+      - name: Publish GitHub release after emulator smoke
+        if: github.event_name == 'push' && github.ref == 'refs/heads/fix/skypeep-startup-v0.2.5'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="v0.2.5-preview.${GITHUB_RUN_NUMBER}"
+          gh release create "$VERSION" \
+            smoke-artifacts/app-debug.apk \
+            smoke-artifacts/app-release.aab \
+            --target "$GITHUB_SHA" \
+            --title "SkyPeep $VERSION" \
+            --prerelease \
+            --notes 'Android startup hotfix: native libgdx.so explicitly packaged for ARM and x86, with emulated startup testing and crash diagnostics. Debug APK is for testing. The AAB is UNSIGNED and cannot be uploaded to Google Play without app signing. Visual and device smoke testing is still required.'
