@@ -23,6 +23,7 @@ Fly through **Sky Start**, **Cloud Pass**, **Crystal Drop**, **Wind Gate**, **Mo
 - 🎮 Responsive touch-to-flap flight and score progression
 - 🗺️ Six themed levels with stars and unlocks
 - 🐦 Three-frame character flight animation with distinct Captain, Forest, Cosmic and Royal 2D costumes
+- 🌈 Dedicated Flight Trails shop with four cosmetics, real unlock and equip actions, and saved coin/gem transactions
 - ✨ Collectible coins, gems and alternate bird skins
 - 🏆 Personal bests and locally saved progress
 - ⭐ Dedicated Level Complete screen, three-star rewards and working Home / Next / Share actions
