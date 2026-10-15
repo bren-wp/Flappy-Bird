@@ -59,11 +59,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="v0.2.3-preview.${GITHUB_RUN_NUMBER}"
+          VERSION="v0.2.4-preview.${GITHUB_RUN_NUMBER}"
           gh release create "$VERSION" \
             app/build/outputs/apk/debug/app-debug.apk \
             app/build/outputs/bundle/release/app-release.aab \
             --target "$GITHUB_SHA" \
             --title "SkyPeep $VERSION" \
             --prerelease \
-            --notes 'Android preview featuring all six original 2D worlds, dynamic world texture loading, corrected gate-width collisions and safe background pause. Debug APK is for testing. The AAB is UNSIGNED and cannot be uploaded to Google Play without app signing. Visual and device smoke testing is still required.'
+            --notes 'Android preview featuring all six original 2D worlds, dynamic world and menu texture loading, corrected gate-width collisions, and safe background pause. Debug APK is for testing. The AAB is UNSIGNED and cannot be uploaded to Google Play without app signing. Visual and device smoke testing is still required.'

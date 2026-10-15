@@ -50,6 +50,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
     private lateinit var viewport: FitViewport
     private lateinit var prefs: Preferences
     private val pictures = mutableMapOf<String, Texture>()
+    private var loadedScreenArt: String? = null
     private var loadedLevelArt = 0
     private lateinit var fontSmall: BitmapFont
     private lateinit var fontLarge: BitmapFont
@@ -106,8 +107,9 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
         if (!ownedSkins[selectedSkin]) selectedSkin = 0
         for (i in 0 until MAX_LEVEL) stars[i] = prefs.getInteger("stars_${i+1}", 0).coerceIn(0, 3)
 
-        for (name in arrayOf("splash", "menu", "map", "pause", "over", "skins"))
-            load("screen_$name", "jpg")
+        // Screen textures are loaded on demand, rather than keeping every
+        // full-portrait menu illustration in GPU memory at the same time.
+        syncScreenArt()
         // Only retain textures for the selected level. Preloading all six worlds
         // multiplied the texture-memory footprint on lower-end Android devices.
         loadLevelArt(level)
@@ -153,6 +155,16 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
         listOf("bg_$world", "pillar_${world}_top", "pillar_${world}_bottom") +
             listOf("left", "score", "right", "pause").map { "hud_${it}_$world" }
 
+    private fun syncScreenArt() {
+        // Reuse the current illustration while in the same screen, and dispose
+        // the previous full-screen JPG before switching to another UI page.
+        val required = SkyPeepAssets.screenFor(screen.name)
+        if (required == loadedScreenArt) return
+        loadedScreenArt?.let { pictures.remove(it)?.dispose() }
+        if (required != null) load(required, "jpg")
+        loadedScreenArt = required
+    }
+
     private fun load(name: String, suffix: String = "png") {
         val texture = Texture(Gdx.files.internal("$name.$suffix"))
         texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear)
@@ -174,6 +186,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
         if (messageTimer > 0f) messageTimer -= delta
         handleInput()
         if (screen == Screen.PLAY) updateGame(delta)
+        syncScreenArt()
         viewport.apply()
         batch.projectionMatrix = camera.combined
         batch.begin()
@@ -237,8 +250,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
             hit(x,y,471f,1155f,370f,169f) -> screen = Screen.SKINS
             hit(x,y,95f,1318f,364f,173f) -> screen = Screen.SHOP
             hit(x,y,471f,1318f,370f,173f) -> screen = Screen.SETTINGS
-            hit(x,y,243f,0f,100f,130f) -> screen = Screen.SHOP
-            hit(x,y,815f,0f,110f,130f) -> screen = Screen.SHOP
+            hit(x,y,243f,0f,100f,130f) -> toast("EARN COINS IN FLIGHT")
+            hit(x,y,815f,0f,110f,130f) -> toast("COMPLETE WORLDS FOR GEMS")
         }
     }
 
