@@ -22,7 +22,7 @@ Fly through **Sky Start**, **Cloud Pass**, **Crystal Drop**, **Wind Gate**, **Mo
 
 - 🎮 Responsive touch-to-flap flight and score progression
 - 🗺️ Six themed levels with stars and unlocks
-- 🐦 Three-frame character flight animation
+- 🐦 Three-frame character flight animation with distinct Captain, Forest, Cosmic and Royal 2D costumes
 - ✨ Collectible coins, gems and alternate bird skins
 - 🏆 Personal bests and locally saved progress
 - 🔊 Music, sound effects and safe pause/resume when returning to Android
