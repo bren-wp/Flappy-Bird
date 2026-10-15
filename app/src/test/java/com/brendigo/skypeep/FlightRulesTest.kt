@@ -27,6 +27,13 @@ class FlightRulesTest {
         assertFalse(FlightRules.intersectsObstacle(0f, width, 500f, 900f, 274f, 420f, 520f, 850f))
     }
 
+    @Test fun diagonalPickupDoesNotCollectThroughEmptyCorners() {
+        assertFalse(FlightRules.overlapsPickup(49f,49f,0f,0f,50f,50f))
+        assertTrue(FlightRules.overlapsPickup(30f,30f,0f,0f,50f,50f))
+        assertFalse(FlightRules.overlapsPickup(0f,0f,0f,0f,0f,50f))
+        assertFalse(FlightRules.overlapsPickup(0f,0f,0f,0f,50f,0f))
+    }
+
     @Test fun pickupRequiresIndependentOverlap() {
         assertFalse(FlightRules.overlapsPickup(100f, 100f, 300f, 300f, 50f, 50f))
         assertTrue(FlightRules.overlapsPickup(300f, 345f, 320f, 360f, 50f, 50f))

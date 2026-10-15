@@ -28,6 +28,7 @@ Fly through **Sky Start**, **Cloud Pass**, **Crystal Drop**, **Wind Gate**, **Mo
 - 🔊 Music, sound effects and safe pause/resume when returning to Android
 - 🚀 Lower texture-memory usage with on-demand menu and active-world-only assets
 - 🌤️ Clean six-world flight backgrounds with moving bird, gates, HUD and pickups rendered in separate 2D layers
+- ☁️ Soft unified cloud layers and distant world-specific mountain silhouettes, with more accurate collectible hitboxes
 - 📤 Share your score through Android
 
 ## Android builds
