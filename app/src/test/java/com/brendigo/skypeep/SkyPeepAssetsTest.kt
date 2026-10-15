@@ -11,7 +11,7 @@ class SkyPeepAssetsTest {
         assertEquals("screen_map", SkyPeepAssets.screenFor("MAP"))
         assertEquals("screen_pause", SkyPeepAssets.screenFor("PAUSE"))
         assertEquals("screen_over", SkyPeepAssets.screenFor("RESULT"))
-        assertEquals("screen_skins", SkyPeepAssets.screenFor("SHOP"))
+        assertEquals("screen_menu", SkyPeepAssets.screenFor("SHOP"))
         assertEquals("screen_skins", SkyPeepAssets.screenFor("SKINS"))
         assertNull(SkyPeepAssets.screenFor("PLAY"))
         assertNull(SkyPeepAssets.screenFor("UNKNOWN"))

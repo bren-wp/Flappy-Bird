@@ -64,6 +64,9 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     private var costumes: Map<Int, Texture> = emptyMap()
     private var victoryStar: Texture? = null
     private var pillarStem: Texture? = null
+    private var trailTexture: Texture? = null
+    private var selectedTrail = 0
+    private val ownedTrails = BooleanArray(4)
     private var music: Music? = null
     private val sounds = mutableMapOf<String, Sound>()
     private val tmp = GlyphLayout()
@@ -116,6 +119,12 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         for (i in 1..4) ownedSkins[i] = prefs.getBoolean("owned_$i", false)
         if (!ownedSkins[selectedSkin]) selectedSkin = 0
         for (i in 0 until MAX_LEVEL) stars[i] = prefs.getInteger("stars_${i+1}", 0).coerceIn(0, 3)
+        ownedTrails[0] = true
+        for (i in 1..3) ownedTrails[i] = prefs.getBoolean("trail_owned_$i",false)
+        selectedTrail = prefs.getInteger("trail_selected",0).coerceIn(0,3)
+        if (!ownedTrails[selectedTrail]) selectedTrail = 0
+        Gdx.app.log("SkyPeepShop",
+            "loaded=${SkyPeepTrailCatalog.all[selectedTrail].name}")
 
         // Screen textures are loaded on demand, rather than keeping every
         // full-portrait menu illustration in GPU memory at the same time.
@@ -136,6 +145,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         prepareChrome()
         costumes = SkyPeepBirdCostumes.prepare()
         victoryStar = createVictoryStar()
+        trailTexture = SkyPeepTrailArtwork.create()
         for (kind in arrayOf("flap", "coin", "win", "fail", "click")) {
             try { sounds[kind] = Gdx.audio.newSound(Gdx.files.internal("$kind.wav")) }
             catch (_: Exception) { /* audio is optional on unsupported devices */ }
@@ -239,7 +249,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
                     drawResult()
                 }
             }
-            Screen.SKINS, Screen.SHOP -> { image("screen_skins", 0f, 0f, W, H); drawSkins() }
+            Screen.SKINS -> { image("screen_skins", 0f, 0f, W, H); drawSkins() }
+            Screen.SHOP -> { image("screen_menu",0f,0f,W,H); drawShop() }
             Screen.SETTINGS -> { image("screen_menu", 0f, 0f, W, H); drawSettings() }
         }
         if (messageTimer > 0 && screen != Screen.PLAY) {
@@ -276,7 +287,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
             }
             Screen.PAUSE -> clickPause(x,yTop)
             Screen.RESULT -> clickResult(x,yTop)
-            Screen.SKINS, Screen.SHOP -> clickSkins(x,yTop)
+            Screen.SKINS -> clickSkins(x,yTop)
+            Screen.SHOP -> clickShop(x,yTop)
             Screen.SETTINGS -> clickSettings(x,yTop)
         }
     }
@@ -391,6 +403,38 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
             save()
             toast("${skinName(skin)} UNLOCKED")
             playSound("win")
+        }
+    }
+
+    private fun clickShop(x:Float,yTop:Float) {
+        playSound("click")
+        if(hit(x,yTop,268f,1255f,409f,177f)) {
+            screen=Screen.MENU
+            save()
+            return
+        }
+        for (offer in SkyPeepTrailCatalog.all) {
+            val bottom=1060f-offer.id*195f
+            val top=H-(bottom+174f)
+            if (!hit(x,yTop,575f,top,273f,174f)) continue
+            val purchased=SkyPeepTrailCatalog.purchase(
+                offer.id,ownedTrails[offer.id],coins,gems)
+            if (!purchased.success) {
+                toast("NOT ENOUGH " + (if(offer.currency==TrailCurrency.GEMS) "GEMS" else "COINS"))
+                playSound("fail")
+                return
+            }
+            coins=purchased.coins
+            gems=purchased.gems
+            ownedTrails[offer.id]=true
+            selectedTrail=offer.id
+            save()
+            toast(if(purchased.alreadyOwned) "${offer.name} EQUIPPED"
+                  else "${offer.name} UNLOCKED")
+            Gdx.app.log("SkyPeepShop",
+                "selected=${offer.name} coins=$coins gems=$gems")
+            playSound("win")
+            return
         }
     }
 
@@ -555,6 +599,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
                 drawDiamond(gate.x+113f,gate.centerY+93f,41f)
             }
         }
+        drawFlightTrail()
         drawBird()
         drawHUD()
         if (readyForFirstTap) {
@@ -572,6 +617,21 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
             batch.draw(tile,x,y,width,size)
             y+=size
         }
+    }
+
+    private fun drawFlightTrail() {
+        if (readyForFirstTap) return
+        val tx=trailTexture ?: return
+        val tint=when(selectedTrail) {
+            1 -> Color.valueOf("43DBFF")
+            2 -> Color.valueOf("FFD145")
+            3 -> Color.valueOf("C078FF")
+            else -> Color.WHITE
+        }
+        batch.color=tint
+        val drift=kotlin.math.sin(animationTime*9f)*7f
+        batch.draw(tx,BIRD_X-158f,birdY+41f+drift,180f,129f)
+        batch.color=Color.WHITE
     }
 
     private fun drawBird() {
@@ -722,6 +782,47 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
                 fitted(if(selectedSkin==i) "EQUIPPED" else "EQUIP",H-1398f,fontSmall,1.1f,171f,x+94f)
             }
         }
+    }
+
+    private fun drawShop() {
+        // Dedicated functional store, not the old SKINS screen duplicated.
+        drawRect(0f,0f,W,H,Color(.04f,.13f,.30f,.72f))
+        badge("cream",72f,180f,797f,1320f)
+        badge("wood",117f,1365f,708f,122f)
+        fitted("FLIGHT TRAILS",1444f,fontLarge,1.28f,657f)
+        badge("dark",118f,1252f,338f,90f)
+        badge("dark",483f,1252f,338f,90f)
+        fitted("COINS  $coins",1312f,fontSmall,1.38f,305f,288f)
+        fitted("GEMS  $gems",1312f,fontSmall,1.38f,305f,653f)
+        val tx=trailTexture
+        for(offer in SkyPeepTrailCatalog.all) {
+            val y=1060f-offer.id*195f
+            badge("cream",99f,y,743f,174f)
+            badge("wood",119f,y+24f,110f,122f)
+            if(tx!=null) {
+                batch.color=when(offer.id) {
+                    1 -> Color.valueOf("43DBFF")
+                    2 -> Color.valueOf("FFD145")
+                    3 -> Color.valueOf("C078FF")
+                    else -> Color.WHITE
+                }
+                batch.draw(tx,132f,y+48f,90f,74f)
+                batch.color=Color.WHITE
+            }
+            fitted(offer.name.uppercase(Locale.ROOT),y+121f,fontSmall,1.10f,322f,410f,Color.valueOf("5B3526"))
+            fitted(SkyPeepTrailCatalog.priceLabel(offer),y+66f,
+                fontSmall,1.05f,322f,410f,Color.valueOf("734428"))
+            badge(if(selectedTrail==offer.id)"green" else if(ownedTrails[offer.id])"blue" else "wood",
+                594f,y+27f,224f,118f)
+            val caption=when {
+                selectedTrail==offer.id -> "EQUIPPED"
+                ownedTrails[offer.id] -> "EQUIP"
+                else -> "BUY"
+            }
+            fitted(caption,y+103f,fontSmall,1.18f,207f,706f)
+        }
+        badge("green",279f,245f,384f,137f)
+        fitted("BACK",337f,fontLarge,1.22f,340f)
     }
 
     private fun drawSettings() {
@@ -876,6 +977,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         prefs.putInteger("coins",coins)
         prefs.putInteger("gems",gems)
         prefs.putInteger("skin",selectedSkin)
+        prefs.putInteger("trail_selected",selectedTrail)
+        for (i in 1..3) prefs.putBoolean("trail_owned_$i",ownedTrails[i])
         prefs.putBoolean("music",musicEnabled)
         prefs.putBoolean("effects",effectsEnabled)
         prefs.putBoolean("vibration",vibrationEnabled)
@@ -902,6 +1005,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         costumes.values.forEach { it.dispose() }
         victoryStar?.dispose()
         pillarStem?.dispose()
+        trailTexture?.dispose()
         if (::batch.isInitialized)batch.dispose()
     }
 }

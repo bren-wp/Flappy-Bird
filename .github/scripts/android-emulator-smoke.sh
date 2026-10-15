@@ -93,6 +93,16 @@ tap_ui 660 1230
 capture skins SKINS
 tap_ui 100 1560
 capture skins-back MENU
+tap_ui 275 1400
+capture shop SHOP
+tap_ui 700 687
+capture shop-purchase SHOP
+adb logcat -d -s SkyPeepShop:I '*:S' | grep -q 'selected=Cyan Dash' || {
+  echo "FAIL: SHOP did not purchase and equip cyan flight trail"
+  exit 1
+}
+tap_ui 470 1360
+capture shop-back MENU
 tap_ui 660 1400
 capture settings SETTINGS
 tap_ui 465 1380
@@ -121,6 +131,12 @@ for world in 1 2 3 4 5 6; do
   if [[ "$last" != *"screen=PLAY"* ]]; then
     echo "FAIL: World $world did not open gameplay"
     exit 1
+  fi
+  if [[ "$world" == 1 ]]; then
+    adb logcat -d -s SkyPeepShop:I '*:S' | grep -q 'loaded=Cyan Dash' || {
+      echo "FAIL: purchased trail was not restored after Android process restart"
+      exit 1
+    }
   fi
   adb exec-out screencap -p > "smoke-results/world-$world.png"
 done
