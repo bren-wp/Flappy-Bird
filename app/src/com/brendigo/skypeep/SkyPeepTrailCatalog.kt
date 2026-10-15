@@ -16,6 +16,10 @@ internal object SkyPeepTrailCatalog {
         FlightTrailOffer(2,"Golden Spark",450,TrailCurrency.COINS),
         FlightTrailOffer(3,"Moonlight",12,TrailCurrency.GEMS)
     )
+    fun priceLabel(offer:FlightTrailOffer):String =
+        if (offer.price==0) "INCLUDED"
+        else "${offer.price} " + if(offer.currency==TrailCurrency.GEMS) "GEMS" else "COINS"
+
     fun purchase(id:Int,owned:Boolean,coins:Int,gems:Int):TrailPurchase {
         val offer=all.getOrNull(id) ?: return TrailPurchase(false,false,coins,gems)
         if(owned || offer.price==0) return TrailPurchase(true,true,coins,gems)

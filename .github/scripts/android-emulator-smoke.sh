@@ -132,6 +132,12 @@ for world in 1 2 3 4 5 6; do
     echo "FAIL: World $world did not open gameplay"
     exit 1
   fi
+  if [[ "$world" == 1 ]]; then
+    adb logcat -d -s SkyPeepShop:I '*:S' | grep -q 'loaded=Cyan Dash' || {
+      echo "FAIL: purchased trail was not restored after Android process restart"
+      exit 1
+    }
+  fi
   adb exec-out screencap -p > "smoke-results/world-$world.png"
 done
 echo "PASS: all six reconstructed worlds opened and rendered."

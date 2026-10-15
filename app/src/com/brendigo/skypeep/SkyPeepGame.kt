@@ -123,6 +123,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         for (i in 1..3) ownedTrails[i] = prefs.getBoolean("trail_owned_$i",false)
         selectedTrail = prefs.getInteger("trail_selected",0).coerceIn(0,3)
         if (!ownedTrails[selectedTrail]) selectedTrail = 0
+        Gdx.app.log("SkyPeepShop",
+            "loaded=${SkyPeepTrailCatalog.all[selectedTrail].name}")
 
         // Screen textures are loaded on demand, rather than keeping every
         // full-portrait menu illustration in GPU memory at the same time.
@@ -808,10 +810,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
                 batch.color=Color.WHITE
             }
             fitted(offer.name.uppercase(Locale.ROOT),y+121f,fontSmall,1.10f,322f,410f,Color.valueOf("5B3526"))
-            val price=if(offer.price==0) "INCLUDED"
-                else if(offer.currency==TrailCurrency.GEMS) "${offer.price} GEMS"
-                else "${offer.price} COINS"
-            fitted(price,y+66f,fontSmall,1.05f,342f,405f,Color.valueOf("734428"))
+            fitted(SkyPeepTrailCatalog.priceLabel(offer),y+66f,
+                fontSmall,1.05f,322f,410f,Color.valueOf("734428"))
             badge(if(selectedTrail==offer.id)"green" else if(ownedTrails[offer.id])"blue" else "wood",
                 594f,y+27f,224f,118f)
             val caption=when {

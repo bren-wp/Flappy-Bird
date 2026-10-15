@@ -10,6 +10,13 @@ class SkyPeepTrailCatalogTest {
         assertEquals(listOf(0,200,450,12),SkyPeepTrailCatalog.all.map { it.price })
         assertEquals(TrailCurrency.GEMS,SkyPeepTrailCatalog.all[3].currency)
     }
+    @Test fun shopLabelsShowActualPricesNotTemplateText() {
+        assertEquals("INCLUDED",SkyPeepTrailCatalog.priceLabel(SkyPeepTrailCatalog.all[0]))
+        assertEquals("200 COINS",SkyPeepTrailCatalog.priceLabel(SkyPeepTrailCatalog.all[1]))
+        assertEquals("450 COINS",SkyPeepTrailCatalog.priceLabel(SkyPeepTrailCatalog.all[2]))
+        assertEquals("12 GEMS",SkyPeepTrailCatalog.priceLabel(SkyPeepTrailCatalog.all[3]))
+    }
+
     @Test fun exactPriceAndInsufficientFunds() {
         val bought=SkyPeepTrailCatalog.purchase(1,false,200,4)
         assertTrue(bought.success)
