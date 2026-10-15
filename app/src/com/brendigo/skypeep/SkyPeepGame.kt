@@ -520,8 +520,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
         drawBird()
         drawHUD()
         if (readyForFirstTap) {
-            drawRect(195f, 345f, 555f, 96f, Color(.08f,.23f,.42f,.88f))
-            centered("TAP TO FLY", 410f, fontLarge)
+            badge("dark",290f,355f,360f,88f)
+            fitted("TAP TO FLY",412f,fontSmall,1.5f,331f)
         }
     }
 
@@ -566,10 +566,15 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
 
     private fun drawMenuWallet() {
         // Cover only screenshot mockup's sample numeric labels, retaining the original visual buttons.
-        badge("dark",119f,H-103f,136f,65f)
-        fitted(coins.toString(),H-54f,fontSmall,1.9f,127f,186f)
-        badge("dark",743f,H-103f,76f,65f)
-        fitted(gems.toString(),H-54f,fontSmall,1.9f,69f,781f)
+        // At the reference values preserve the screenshot pixels exactly.
+        if(coins!=1250) {
+            badge("dark",119f,H-103f,136f,65f)
+            fitted(coins.toString(),H-54f,fontSmall,1.9f,127f,186f)
+        }
+        if(gems!=75) {
+            badge("dark",743f,H-103f,76f,65f)
+            fitted(gems.toString(),H-54f,fontSmall,1.9f,69f,781f)
+        }
     }
 
     private fun drawMapProgress() {
@@ -614,10 +619,14 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
     }
 
     private fun drawSkins() {
-        badge("wood",120f,H-103f,164f,65f)
-        fitted(coins.toString(),H-56f,fontSmall,1.8f,153f,199f)
-        badge("wood",733f,H-103f,111f,65f)
-        fitted(gems.toString(),H-56f,fontSmall,1.8f,104f,788f)
+        if(coins!=1250) {
+            badge("wood",120f,H-103f,164f,65f)
+            fitted(coins.toString(),H-56f,fontSmall,1.8f,153f,199f)
+        }
+        if(gems!=89) {
+            badge("wood",733f,H-103f,111f,65f)
+            fitted(gems.toString(),H-56f,fontSmall,1.8f,104f,788f)
+        }
         if (selectedSkin!=0) {
             badge("cream",341f,H-821f,282f,68f)
             fitted(skinName(selectedSkin).uppercase(Locale.ROOT),H-775f,fontSmall,1.3f,265f,W/2f,Color.valueOf("603F2B"))
@@ -636,7 +645,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
         drawRect(0f,0f,W,H,Color(0f,.07f,.17f,.68f))
         badge("cream",91f,348f,759f,1020f)
         badge("wood",132f,1214f,677f,139f)
-        fitted("SETTINGS",1300f,fontLarge,1.65f,627f)
+        fitted("SETTINGS",1340f,fontLarge,1.55f,627f)
         val names=arrayOf("MUSIC","SOUND EFFECTS","VIBRATION","LANGUAGE")
         for(i in names.indices) {
             val yy=1010f-i*143f
@@ -650,8 +659,12 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
                 })
             } else fitted("ENGLISH",yy+77f,fontSmall,1.1f,124f,715f)
         }
+        badge("blue",137f,421f,310f,116f)
+        fitted("BEST " + best,494f,fontSmall,1.4f,285f,292f)
+        badge("green",492f,421f,313f,116f)
+        fitted("WORLDS " + unlocked + "/6",494f,fontSmall,1.3f,290f,649f)
         badge("green",185f,243f,575f,129f)
-        fitted("BACK",327f,fontLarge,1.45f,531f)
+        fitted("BACK",352f,fontLarge,1.30f,531f)
     }
 
     /** Rounded, antialiased-like gradient chrome rendered once, reused on each screen. */
