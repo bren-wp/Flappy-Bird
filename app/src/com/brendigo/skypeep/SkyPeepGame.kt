@@ -1,78 +1,666 @@
+/*
+ * SkyPeep gameplay, visual integration and menus.
+ * Derived from the original user-supplied FlappyBird Android/libGDX starter.
+ * Original 2018 Kotlin starter copyright Konstantinos Drakonakis (Apache-2.0).
+ * Reference illustrations supplied by the user; no online image assets.
+ */
 package com.brendigo.skypeep
 
 import com.badlogic.gdx.ApplicationAdapter
 import com.badlogic.gdx.Gdx
-import com.badlogic.gdx.graphics.GL20
+import com.badlogic.gdx.Input
+import com.badlogic.gdx.Preferences
+import com.badlogic.gdx.audio.Music
+import com.badlogic.gdx.audio.Sound
+import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.OrthographicCamera
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer
-import com.badlogic.gdx.utils.ScreenUtils
+import com.badlogic.gdx.graphics.Pixmap
+import com.badlogic.gdx.graphics.Texture
+import com.badlogic.gdx.graphics.g2d.BitmapFont
+import com.badlogic.gdx.graphics.g2d.GlyphLayout
+import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.math.MathUtils
+import com.badlogic.gdx.math.Vector2
+import com.badlogic.gdx.utils.viewport.FitViewport
+import java.util.Locale
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.sqrt
 
-/** Initial playable flight loop; full illustrated level assets and menus are being ported. */
-class SkyPeepGame : ApplicationAdapter() {
-    private lateinit var shapes: ShapeRenderer
-    private val camera = OrthographicCamera()
-    private var y = 480f
-    private var velocity = 0f
-    private var obstacleX = 650f
-    private var gapY = 480f
+/** All locations refer to the original 941x1672 portrait artwork. No scrolling. */
+class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : ApplicationAdapter() {
+    companion object {
+        private const val W = 941f
+        private const val H = 1672f
+        private const val BIRD_X = 172f
+        private const val BIRD_W = 245f
+        private const val BIRD_H = 215f
+        private const val MAX_LEVEL = 6
+    }
+
+    private enum class Screen { SPLASH, MENU, MAP, PLAY, PAUSE, RESULT, SKINS, SHOP, SETTINGS }
+    private data class Gate(var x: Float, var centerY: Float, var scored: Boolean = false,
+                            var coinTaken: Boolean = false, var gemTaken: Boolean = false,
+                            val gem: Boolean = false)
+
+    private lateinit var batch: SpriteBatch
+    private lateinit var camera: OrthographicCamera
+    private lateinit var viewport: FitViewport
+    private lateinit var prefs: Preferences
+    private val pictures = mutableMapOf<String, Texture>()
+    private lateinit var fontSmall: BitmapFont
+    private lateinit var fontLarge: BitmapFont
+    private lateinit var solid: Texture
+    private var music: Music? = null
+    private val sounds = mutableMapOf<String, Sound>()
+    private val tmp = GlyphLayout()
+    private val touch = Vector2()
+
+    private var screen = Screen.SPLASH
+    private var level = 1
+    private var unlocked = 1
+    private var resultWon = false
     private var score = 0
-    private var playing = false
-    private val width = 540f
-    private val height = 960f
-    private val birdX = 145f
-    private val radius = 22f
-    private val obstacleWidth = 76f
-    private val gapHeight = 235f
-    private var counted = false
+    private var best = 0
+    private var coins = 1250
+    private var gems = 75
+    private var earnedCoins = 0
+    private var selectedSkin = 0
+    private val ownedSkins = BooleanArray(5)
+    private val stars = IntArray(MAX_LEVEL)
+    private var musicEnabled = true
+    private var effectsEnabled = true
+    private var vibrationEnabled = false
+    private var birdY = 815f
+    private var verticalSpeed = 0f
+    private var flapTimer = 0f
+    private var readyForFirstTap = false
+    private var animationTime = 0f
+    private var elapsed = 0f
+    private var nextGate = 1.5f
+    private val gates = mutableListOf<Gate>()
+    private var message = ""
+    private var messageTimer = 0f
+
     override fun create() {
-        shapes = ShapeRenderer()
-        camera.setToOrtho(false, width, height)
+        batch = SpriteBatch()
+        camera = OrthographicCamera()
+        viewport = FitViewport(W, H, camera)
+        viewport.update(Gdx.graphics.width, Gdx.graphics.height, true)
+        batch.projectionMatrix = camera.combined
+        prefs = Gdx.app.getPreferences("SkyPeepSettingsAndProgress")
+        best = prefs.getInteger("best", 0)
+        unlocked = prefs.getInteger("unlocked", 1).coerceIn(1, MAX_LEVEL)
+        level = prefs.getInteger("level", 1).coerceIn(1, unlocked)
+        coins = prefs.getInteger("coins", 1250).coerceAtLeast(0)
+        gems = prefs.getInteger("gems", 75).coerceAtLeast(0)
+        selectedSkin = prefs.getInteger("skin", 0).coerceIn(0, 4)
+        musicEnabled = prefs.getBoolean("music", true)
+        effectsEnabled = prefs.getBoolean("effects", true)
+        vibrationEnabled = prefs.getBoolean("vibration", false)
+        ownedSkins[0] = true
+        for (i in 1..4) ownedSkins[i] = prefs.getBoolean("owned_$i", false)
+        if (!ownedSkins[selectedSkin]) selectedSkin = 0
+        for (i in 0 until MAX_LEVEL) stars[i] = prefs.getInteger("stars_${i+1}", 0).coerceIn(0, 3)
+
+        for (name in arrayOf("splash", "menu", "map", "pause", "over", "skins"))
+            load("screen_$name", "jpg")
+        for (i in 1..MAX_LEVEL) {
+            load("bg_$i", "jpg")
+            load("pillar_${i}_top")
+            load("pillar_${i}_bottom")
+            for (part in arrayOf("left", "score", "right", "pause")) load("hud_${part}_$i")
+        }
+        for (pose in arrayOf("idle", "up", "down")) load("bird_$pose")
+        load("coin_asset")
+        load("gem_asset")
+        fontSmall = BitmapFont(Gdx.files.internal("ui_36.fnt"))
+        fontLarge = BitmapFont(Gdx.files.internal("ui_62.fnt"))
+        val pixel = Pixmap(1, 1, Pixmap.Format.RGBA8888)
+        pixel.setColor(Color.WHITE)
+        pixel.fill()
+        solid = Texture(pixel)
+        pixel.dispose()
+        for (kind in arrayOf("flap", "coin", "win", "fail", "click")) {
+            try { sounds[kind] = Gdx.audio.newSound(Gdx.files.internal("$kind.wav")) }
+            catch (_: Exception) { /* audio is optional on unsupported devices */ }
+        }
+        try {
+            music = Gdx.audio.newMusic(Gdx.files.internal("music.ogg"))
+            music?.isLooping = true
+            music?.volume = .40f
+            if (musicEnabled) music?.play()
+        } catch (_: Exception) { music = null }
+        Gdx.input.setCatchKey(Input.Keys.BACK, true)
+        Gdx.input.setCatchKey(Input.Keys.ESCAPE, true)
+    }
+
+    private fun load(name: String, suffix: String = "png") {
+        val texture = Texture(Gdx.files.internal("$name.$suffix"))
+        texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear)
+        pictures[name] = texture
+    }
+
+    private fun image(name: String, x: Float, y: Float, width: Float, height: Float) {
+        pictures[name]?.let { batch.draw(it, x, y, width, height) }
+    }
+
+    override fun resize(width: Int, height: Int) {
+        viewport.update(width, height, true)
         camera.update()
-        reset()
     }
-    private fun reset() {
-        y = 480f; velocity = 0f; obstacleX = 650f; gapY = 480f
-        score = 0; counted = false; playing = false
-    }
+
     override fun render() {
-        val delta = Gdx.graphics.deltaTime.coerceAtMost(1f / 30f)
-        if (Gdx.input.justTouched()) {
-            if (!playing && (y < radius || y > height - radius || collision())) reset()
-            playing = true
-            velocity = 340f
+        val delta = Gdx.graphics.deltaTime.coerceIn(0f, .05f)
+        animationTime += delta
+        if (messageTimer > 0f) messageTimer -= delta
+        handleInput()
+        if (screen == Screen.PLAY) updateGame(delta)
+        viewport.apply()
+        batch.projectionMatrix = camera.combined
+        batch.begin()
+        when (screen) {
+            Screen.SPLASH -> image("screen_splash", 0f, 0f, W, H)
+            Screen.MENU -> { image("screen_menu", 0f, 0f, W, H); drawMenuWallet() }
+            Screen.MAP -> { image("screen_map", 0f, 0f, W, H); drawMapProgress() }
+            Screen.PLAY -> drawGameplay()
+            Screen.PAUSE -> { image("screen_pause", 0f, 0f, W, H); drawPauseToggles() }
+            Screen.RESULT -> { image("screen_over", 0f, 0f, W, H); drawResult() }
+            Screen.SKINS, Screen.SHOP -> { image("screen_skins", 0f, 0f, W, H); drawSkins() }
+            Screen.SETTINGS -> { image("screen_menu", 0f, 0f, W, H); drawSettings() }
         }
-        if (playing) {
-            velocity -= 870f * delta
-            y += velocity * delta
-            obstacleX -= (190f + score.coerceAtMost(40) * 3f) * delta
-            if (!counted && obstacleX + obstacleWidth < birdX) { score++; counted = true }
-            if (obstacleX + obstacleWidth < 0f) {
-                obstacleX = width + 50f
-                gapY = MathUtils.random(300f, 660f)
-                counted = false
+        if (messageTimer > 0 && screen != Screen.PLAY) {
+            drawRect(100f, 1490f, W - 200f, 88f, Color(0.06f, 0.14f, 0.28f, .90f))
+            centered(message, 1525f, fontSmall)
+        }
+        batch.end()
+    }
+
+    private fun handleInput() {
+        if (Gdx.input.isKeyJustPressed(Input.Keys.BACK) || Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+            when (screen) {
+                Screen.PLAY -> screen = Screen.PAUSE
+                Screen.PAUSE -> screen = Screen.PLAY
+                Screen.SPLASH -> screen = Screen.MENU
+                else -> screen = Screen.MENU
             }
-            if (y < radius || y > height - radius || collision()) playing = false
+            playSound("click")
+            return
         }
-        ScreenUtils.clear(0.24f, 0.69f, 0.96f, 1f)
-        shapes.projectionMatrix = camera.combined
-        shapes.begin(ShapeRenderer.ShapeType.Filled)
-        shapes.setColor(0.98f, 0.86f, 0.56f, 1f)
-        shapes.rect(obstacleX, 0f, obstacleWidth, gapY - gapHeight / 2f)
-        shapes.rect(obstacleX, gapY + gapHeight / 2f, obstacleWidth, height - gapY - gapHeight / 2f)
-        shapes.setColor(0.04f, 0.73f, 0.87f, 1f)
-        shapes.circle(birdX, y, radius, 32)
-        shapes.setColor(1f, 0.94f, 0.81f, 1f)
-        shapes.circle(birdX + 9f, y - 4f, 7f, 18)
-        shapes.end()
+        if (!Gdx.input.justTouched()) return
+        touch.set(Gdx.input.x.toFloat(), Gdx.input.y.toFloat())
+        viewport.unproject(touch)
+        if (touch.x < 0 || touch.x > W || touch.y < 0 || touch.y > H) return
+        val x = touch.x
+        val yTop = H - touch.y
+        when (screen) {
+            Screen.SPLASH -> { screen = Screen.MENU; playSound("click") }
+            Screen.MENU -> clickMenu(x, yTop)
+            Screen.MAP -> clickMap(x, yTop)
+            Screen.PLAY -> {
+                if (hit(x,yTop,806f,0f,135f,155f)) { screen = Screen.PAUSE; playSound("click") }
+                else flap()
+            }
+            Screen.PAUSE -> clickPause(x,yTop)
+            Screen.RESULT -> clickResult(x,yTop)
+            Screen.SKINS, Screen.SHOP -> clickSkins(x,yTop)
+            Screen.SETTINGS -> clickSettings(x,yTop)
+        }
     }
-    private fun collision(): Boolean {
-        val intersectsX = birdX + radius > obstacleX && birdX - radius < obstacleX + obstacleWidth
-        return intersectsX && (y - radius < gapY - gapHeight / 2f || y + radius > gapY + gapHeight / 2f)
+
+    private fun hit(x: Float,y: Float, l: Float,t: Float,w: Float,h: Float): Boolean =
+        x >= l && x <= l+w && y >= t && y <= t+h
+
+    private fun clickMenu(x: Float, y: Float) {
+        playSound("click")
+        when {
+            hit(x,y,170f,895f,590f,248f) -> begin(level)
+            hit(x,y,95f,1155f,364f,169f) -> screen = Screen.MAP
+            hit(x,y,471f,1155f,370f,169f) -> screen = Screen.SKINS
+            hit(x,y,95f,1318f,364f,173f) -> screen = Screen.SHOP
+            hit(x,y,471f,1318f,370f,173f) -> screen = Screen.SETTINGS
+            hit(x,y,243f,0f,100f,130f) -> screen = Screen.SHOP
+            hit(x,y,815f,0f,110f,130f) -> screen = Screen.SHOP
+        }
     }
-    override fun resize(w: Int, h: Int) {
-        camera.setToOrtho(false, width, height)
-        camera.update()
+
+    private fun clickMap(x: Float, y: Float) {
+        playSound("click")
+        when {
+            hit(x,y,5f,1435f,200f,237f) -> screen = Screen.MENU
+            hit(x,y,580f,1450f,360f,220f) -> begin(level)
+            else -> {
+                val pos = arrayOf(
+                    floatArrayOf(260f,1260f,650f,1490f),
+                    floatArrayOf(540f,1000f,910f,1270f),
+                    floatArrayOf(120f,795f,500f,1080f),
+                    floatArrayOf(490f,585f,880f,864f),
+                    floatArrayOf(135f,315f,530f,632f),
+                    floatArrayOf(545f,195f,915f,498f)
+                )
+                for (i in pos.indices) {
+                    val p=pos[i]
+                    if (hit(x,y,p[0],p[1],p[2]-p[0],p[3]-p[1])) {
+                        if (i+1 <= unlocked) { level=i+1; save(); toast("SELECTED: ${levelTitle(level)}") }
+                        else toast("COMPLETE PREVIOUS LEVEL")
+                        return
+                    }
+                }
+            }
+        }
     }
-    override fun dispose() { shapes.dispose() }
+
+    private fun clickPause(x: Float, y: Float) {
+        playSound("click")
+        when {
+            hit(x,y,220f,640f,500f,163f) -> screen = Screen.PLAY
+            hit(x,y,220f,798f,500f,158f) -> begin(level)
+            hit(x,y,220f,951f,500f,158f) -> { screen = Screen.MENU; save() }
+            hit(x,y,200f,1120f,545f,126f) -> setMusic(!musicEnabled)
+            hit(x,y,200f,1240f,545f,126f) -> { effectsEnabled = !effectsEnabled; save() }
+        }
+    }
+
+    private fun clickResult(x: Float, y: Float) {
+        playSound("click")
+        if (y in 1195f..1505f) {
+            when {
+                x < 305f -> { screen = Screen.MENU; save() }
+                x < 628f -> {
+                    val nextLevel = if (resultWon && level < MAX_LEVEL) level + 1 else level
+                    begin(nextLevel)
+                }
+                else -> {
+                    val msg = "SkyPeep | ${levelTitle(level)} | Score $score | Best $best"
+                    if (shareText != null) shareText.invoke(msg)
+                    else Gdx.app.clipboard.contents = msg
+                    toast("SHARE RESULT")
+                }
+            }
+        }
+    }
+
+    private fun clickSkins(x: Float, y: Float) {
+        playSound("click")
+        if (y < 140f && x in 240f..355f) {
+            toast("EARN COINS IN FLIGHT")
+            return
+        }
+        if (y < 140f && x in 825f..935f) {
+            toast("COMPLETE WORLDS FOR GEMS")
+            return
+        }
+        if (hit(x,y,0f,1445f,210f,227f)) { screen = Screen.MENU; return }
+        if (hit(x,y,285f,810f,398f,120f)) { selectedSkin = 0; save(); toast("DEFAULT EQUIPPED"); return }
+        if (y !in 1010f..1480f) return
+        val skin = when {
+            x < 233f -> 1
+            x < 470f -> 2
+            x < 708f -> 3
+            else -> 4
+        }
+        if (ownedSkins[skin]) {
+            selectedSkin = skin
+            save()
+            toast("${skinName(skin)} EQUIPPED")
+            return
+        }
+        val costs = intArrayOf(0,500,800,120,1000)
+        val useGem = skin == 3
+        val price=costs[skin]
+        if ((if (useGem) gems else coins) < price) {
+            toast("NOT ENOUGH ${if (useGem) "GEMS" else "COINS"}")
+            playSound("fail")
+        } else {
+            if (useGem) gems -= price else coins -= price
+            ownedSkins[skin]=true
+            selectedSkin=skin
+            save()
+            toast("${skinName(skin)} UNLOCKED")
+            playSound("win")
+        }
+    }
+
+    private fun clickSettings(x: Float, y: Float) {
+        playSound("click")
+        when {
+            hit(x,y,160f,1145f,630f,165f) -> { screen=Screen.MENU; save() }
+            hit(x,y,120f,555f,710f,118f) -> setMusic(!musicEnabled)
+            hit(x,y,120f,698f,710f,117f) -> { effectsEnabled=!effectsEnabled; save() }
+            hit(x,y,120f,840f,710f,120f) -> { vibrationEnabled=!vibrationEnabled; save() }
+            hit(x,y,120f,980f,710f,127f) -> { toast("LANGUAGE: ENGLISH") }
+        }
+    }
+
+    private fun setMusic(enabled:Boolean) {
+        musicEnabled=enabled
+        if (enabled) music?.play() else music?.pause()
+        save()
+    }
+
+    private fun begin(chosen: Int) {
+        level = chosen.coerceIn(1, unlocked)
+        screen = Screen.PLAY
+        score=0
+        earnedCoins=0
+        resultWon=false
+        elapsed=0f
+        nextGate=2.0f
+        gates.clear()
+        verticalSpeed=0f
+        birdY=840f
+        flapTimer=0f
+        animationTime=0f
+        readyForFirstTap=true
+        save()
+    }
+
+    private fun flap() {
+        readyForFirstTap=false
+        verticalSpeed=690f
+        flapTimer=.13f
+        playSound("flap")
+    }
+
+    private fun updateGame(dt: Float) {
+        if (readyForFirstTap) return
+        elapsed += dt
+        flapTimer = max(0f,flapTimer-dt)
+        verticalSpeed = max(-900f, verticalSpeed - 1720f*dt)
+        birdY += verticalSpeed *dt
+        if (birdY < 38f || birdY + BIRD_H > H - 205f) { finish(false); return }
+        val gap = FlightRules.gap(level)
+        val moveSpeed = 235f + (level-1)*22f
+        nextGate -= dt
+        if (nextGate <= 0f) {
+            nextGate= max(1.38f, 2.25f-(level-1)*.11f)
+            val center = MathUtils.random(570f,1110f)
+            gates.add(Gate(W+80f,center,gem=(score>0 && MathUtils.random(0,9)==0)))
+        }
+        val iterator=gates.iterator()
+        while (iterator.hasNext()) {
+            val gate=iterator.next()
+            gate.x -= moveSpeed * dt
+            val gateWidth=240f
+            val topLimit=gate.centerY+gap*.5f
+            val bottomLimit=gate.centerY-gap*.5f
+            val hitLeft = BIRD_X + 48f
+            val hitRight = BIRD_X + BIRD_W - 53f
+            val hitBottom=birdY+52f
+            val hitTop=birdY+BIRD_H-55f
+            if (FlightRules.intersectsObstacle(
+                    gateX = gate.x, gateWidth = gateWidth,
+                    gapBottom = bottomLimit, gapTop = topLimit,
+                    birdLeft = hitLeft, birdRight = hitRight,
+                    birdBottom = hitBottom, birdTop = hitTop
+                )) {
+                finish(false)
+                return
+            }
+            if (!gate.coinTaken && gate.x+gateWidth*.5f<BIRD_X+BIRD_W &&
+                gate.x+gateWidth*.5f>BIRD_X &&
+                kotlin.math.abs((birdY+BIRD_H*.5f)-gate.centerY)<125f) {
+                gate.coinTaken=true
+                coins+=5
+                earnedCoins+=5
+                playSound("coin")
+            }
+            // Gems have their own hitbox; collecting a coin must not grant a distant gem.
+            if (gate.gem && !gate.gemTaken &&
+                FlightRules.overlapsPickup(
+                    playerX = BIRD_X + BIRD_W * .5f,
+                    playerY = birdY + BIRD_H * .5f,
+                    pickupX = gate.x + 118f,
+                    pickupY = gate.centerY + 93f,
+                    radiusX = 68f,
+                    radiusY = 57f
+                )) {
+                gate.gemTaken=true
+                gems++
+                playSound("coin")
+            }
+            if (!gate.scored && gate.x+gateWidth < BIRD_X+40f) {
+                gate.scored=true
+                score++
+                best=max(best,score)
+                if (score >= targetScore()) { finish(true); return }
+            }
+            if (gate.x < -400f) iterator.remove()
+        }
+    }
+
+    private fun targetScore() = FlightRules.targetScore(level)
+    private fun finish(won: Boolean) {
+        resultWon = won
+        screen = Screen.RESULT
+        best=max(best,score)
+        if (won) {
+            coins += 100 + level * 15
+            earnedCoins += 100 + level * 15
+            stars[level-1]=3
+            unlocked=max(unlocked,min(MAX_LEVEL,level+1))
+            playSound("win")
+        } else {
+            playSound("fail")
+            if (vibrationEnabled) try { Gdx.input.vibrate(40) } catch (_:Exception) { }
+        }
+        save()
+    }
+
+    private fun drawGameplay() {
+        image("bg_$level",0f,0f,W,H)
+        val gap = FlightRules.gap(level)
+        for (gate in gates) {
+            val top = pictures["pillar_${level}_top"]!!
+            val bottom = pictures["pillar_${level}_bottom"]!!
+            val topY = gate.centerY+gap*.5f
+            val bottomY = gate.centerY-gap*.5f
+            val pillarWidth=275f
+            // The pole stems are rendered behind the photographed caps as scalable 2D shapes.
+            val tint = when(level) {
+                3 -> Color(.14f,.27f,.43f,1f)
+                5 -> Color(.25f,.16f,.48f,1f)
+                6 -> Color(.90f,.76f,.47f,1f)
+                else -> Color(.89f,.84f,.72f,1f)
+            }
+            drawRect(gate.x+39f, topY+top.height*.95f, pillarWidth-72f,
+                     max(0f,H-(topY+top.height*.95f)),tint)
+            image("pillar_${level}_top",gate.x,topY,pillarWidth,top.height.toFloat())
+            image("pillar_${level}_bottom",gate.x,bottomY-bottom.height,
+                  pillarWidth,bottom.height.toFloat())
+            if (!gate.coinTaken) {
+                drawCoin(gate.x+118f,gate.centerY+9f,37f)
+            }
+            if (gate.gem && !gate.gemTaken) {
+                drawDiamond(gate.x+113f,gate.centerY+93f,41f)
+            }
+        }
+        drawBird()
+        drawHUD()
+        if (readyForFirstTap) {
+            drawRect(195f, 345f, 555f, 96f, Color(.08f,.23f,.42f,.88f))
+            centered("TAP TO FLY", 410f, fontLarge)
+        }
+    }
+
+    private fun drawBird() {
+        val pose=if (flapTimer>0 || ((animationTime*8f).toInt()%3==1)) "up"
+                 else if ((animationTime*8f).toInt()%3==2) "down" else "idle"
+        // Preserve the exact original 2D source pixels; slight angular bob through vertical physics.
+        val tx=pictures["bird_$pose"] ?: return
+        val alt=if (selectedSkin==0) Color.WHITE else when (selectedSkin) {
+            1 -> Color(.83f,.98f,1f,1f)
+            2 -> Color(.50f,1f,.55f,1f)
+            3 -> Color(.65f,.55f,1f,1f)
+            else -> Color(1f,.91f,.76f,1f)
+        }
+        batch.color=alt
+        batch.draw(tx,BIRD_X,birdY,BIRD_W,BIRD_H)
+        batch.color=Color.WHITE
+    }
+
+    private fun drawHUD() {
+        // Exact cropped reference HUD layers. Dynamic figures replace reference mockup values.
+        image("hud_left_$level", 14f, H-123f, 269f, 113f)
+        image("hud_right_$level", 635f, H-124f, 191f, 115f)
+        image("hud_pause_$level", 811f, H-129f, 125f, 122f)
+        image("hud_score_$level", 286f, H-218f, 367f, 210f)
+        // Cover only the numeric text within the reference plates.
+        drawRect(122f, H-99f, 113f, 58f, Color(.075f,.20f,.37f,1f))
+        label(coins.toString(), 125f, H-55f, fontSmall)
+        drawRect(735f, H-98f, 61f, 54f, Color(.075f,.20f,.37f,1f))
+        label(gems.toString(), 736f, H-55f, fontSmall)
+        drawRect(393f, H-126f, 145f, 81f, Color(.075f,.38f,.72f,1f))
+        centered(score.toString(), H-62f, fontLarge)
+    }
+
+    private fun drawCoin(x:Float,y:Float,r:Float) {
+        image("coin_asset",x-r,y-r,r*2f,r*2f)
+    }
+
+    private fun drawDiamond(x:Float,y:Float,r:Float) {
+        image("gem_asset",x-r,y-r,r*2f,r*2f)
+    }
+
+    private fun drawMenuWallet() {
+        // Cover only screenshot mockup's sample numeric labels, retaining the original visual buttons.
+        drawRect(117f,H-102f,136f,66f,Color(.07f,.20f,.35f,1f))
+        label(coins.toString(),128f,H-54f,fontSmall)
+        drawRect(748f,H-103f,65f,66f,Color(.07f,.20f,.35f,1f))
+        label(gems.toString(),747f,H-54f,fontSmall)
+    }
+
+    private fun drawMapProgress() {
+        // Place unlocked tags on top of the fixed reference locks, without changing the map artwork.
+        val badges=arrayOf(floatArrayOf(705f,1112f),floatArrayOf(345f,903f),
+            floatArrayOf(670f,695f),floatArrayOf(360f,450f),floatArrayOf(733f,278f))
+        for (i in 2..unlocked) {
+            val p=badges[i-2]
+            drawRect(p[0]-46f,H-p[1]-42f,92f,75f,Color(.19f,.70f,.24f,.98f))
+            label("OK",p[0]-15f,H-p[1]+24f,fontSmall)
+        }
+        // The selected level is indicated when the user taps its island. The background map
+        // is deliberately unobstructed, and PLAY always uses the selected unlocked level.
+    }
+
+    private fun drawResult() {
+        if (resultWon) {
+            drawRect(150f,H-763f,643f,287f,Color(.99f,.89f,.72f,.99f))
+            centered("LEVEL COMPLETE",H-605f,fontLarge)
+            centered("3 STARS",H-708f,fontSmall)
+        }
+        // Static illustration labels remain; the actual run values replace sample values.
+        val panel=Color(.97f,.90f,.78f,1f)
+        drawRect(201f,H-947f,157f,95f,panel)
+        drawRect(399f,H-947f,165f,95f,panel)
+        drawRect(673f,H-947f,115f,95f,panel)
+        label(score.toString(),208f,H-873f,fontLarge)
+        label(best.toString(),410f,H-873f,fontLarge)
+        label(earnedCoins.toString(),668f,H-873f,fontLarge)
+        val progress = min(1f, score.toFloat() / targetScore())
+        drawRect(300f,H-1100f,455f,53f,Color(.42f,.43f,.48f,1f))
+        drawRect(302f,H-1097f,451f*progress,46f,Color(.12f,.58f,.93f,1f))
+        centered("$score / ${targetScore()}",H-1059f,fontSmall,526f)
+        if (resultWon) {
+            drawRect(319f,H-1438f,310f,182f,Color(.12f,.75f,.22f,.55f))
+            centered(if(level<MAX_LEVEL) "NEXT" else "REPLAY",H-1350f,fontSmall,475f)
+        }
+    }
+
+    private fun drawPauseToggles() {
+        // Dynamic ON/OFF text overlays the illustrative reference controls.
+        drawRect(559f, H-1226f, 80f, 57f, Color(.97f,.88f,.70f,.98f))
+        label(if (musicEnabled) "ON" else "OFF", 569f, H-1180f, fontSmall)
+        drawRect(559f, H-1348f, 80f, 57f, Color(.97f,.88f,.70f,.98f))
+        label(if (effectsEnabled) "ON" else "OFF", 569f, H-1304f, fontSmall)
+    }
+
+    private fun drawSkins() {
+        drawRect(118f,H-105f,165f,66f,Color(.20f,.11f,.08f,1f))
+        label(coins.toString(),123f,H-57f,fontSmall)
+        drawRect(728f,H-105f,115f,66f,Color(.20f,.11f,.08f,1f))
+        label(gems.toString(),730f,H-57f,fontSmall)
+        if (selectedSkin!=0) {
+            drawRect(345f,H-817f,275f,57f,Color(.96f,.86f,.64f,1f))
+            centered(skinName(selectedSkin).uppercase(Locale.ROOT),H-772f,fontSmall)
+        }
+        for (i in 1..4) {
+            if (ownedSkins[i]) {
+                val x=(i-1)*235f+25f
+                drawRect(x,H-1456f,188f,94f,Color(.13f,.68f,.23f,.95f))
+                label(if(selectedSkin==i) "EQUIPPED" else "EQUIP",x+9f,H-1398f,fontSmall)
+            }
+        }
+    }
+
+    private fun drawSettings() {
+        drawRect(0f,0f,W,H,Color(0f,.05f,.13f,.72f))
+        drawRect(86f,390f,769f,1010f,Color(.95f,.89f,.75f,.98f))
+        drawRect(106f,1240f,728f,142f,Color(.20f,.55f,.90f,1f))
+        centered("SETTINGS",1315f,fontLarge)
+        val names=arrayOf("MUSIC", "SOUND EFFECTS", "VIBRATION", "LANGUAGE")
+        val value=arrayOf(if(musicEnabled) "ON" else "OFF",if(effectsEnabled) "ON" else "OFF",
+            if(vibrationEnabled) "ON" else "OFF", "ENGLISH")
+        for (i in names.indices) {
+            val y=1003f-i*143f
+            drawRect(135f,y,665f,110f,Color(.11f,.36f,.67f,.99f))
+            label(names[i],160f,y+72f,fontSmall)
+            label(value[i],if(i==3) 610f else 690f,y+72f,fontSmall)
+        }
+        drawRect(195f,355f,553f,140f,Color(.22f,.70f,.25f,1f))
+        centered("BACK",446f,fontLarge)
+    }
+
+    private fun drawRect(x:Float,y:Float,w:Float,h:Float,color:Color) {
+        if (w<=0f || h<=0f) return
+        batch.color=color
+        batch.draw(solid,x,y,w,h)
+        batch.color=Color.WHITE
+    }
+
+    private fun label(text:String,x:Float,y:Float,font:BitmapFont) {
+        font.draw(batch,text,x,y)
+    }
+
+    private fun centered(text:String,y:Float,font:BitmapFont,centerX:Float=W/2f) {
+        tmp.setText(font,text)
+        font.draw(batch,text,centerX-tmp.width/2,y)
+    }
+
+    private fun toast(value:String) {
+        message=value
+        messageTimer=2.3f
+    }
+    private fun levelTitle(i:Int)=arrayOf("Sky Start","Cloud Pass","Crystal Drop",
+        "Wind Gate","Moon Glow","Sun Peak")[i.coerceIn(1,MAX_LEVEL)-1]
+    private fun skinName(i:Int)=arrayOf("Default","Captain","Forest","Cosmic","Royal")[i.coerceIn(0,4)]
+    private fun playSound(kind:String) {
+        if (effectsEnabled) try { sounds[kind]?.play(.45f) } catch (_:Exception) { }
+    }
+    private fun save() {
+        prefs.putInteger("best",best)
+        prefs.putInteger("unlocked",unlocked)
+        prefs.putInteger("level",level)
+        prefs.putInteger("coins",coins)
+        prefs.putInteger("gems",gems)
+        prefs.putInteger("skin",selectedSkin)
+        prefs.putBoolean("music",musicEnabled)
+        prefs.putBoolean("effects",effectsEnabled)
+        prefs.putBoolean("vibration",vibrationEnabled)
+        for (i in 0..4) prefs.putBoolean("owned_$i",ownedSkins[i])
+        for (i in 0 until MAX_LEVEL) prefs.putInteger("stars_${i+1}",stars[i])
+        prefs.flush()
+    }
+    override fun pause() { save();music?.pause() }
+    override fun resume() { if (musicEnabled) music?.play() }
+    override fun dispose() {
+        save()
+        music?.dispose()
+        sounds.values.forEach { it.dispose() }
+        pictures.values.forEach { it.dispose() }
+        if (::fontSmall.isInitialized)fontSmall.dispose()
+        if (::fontLarge.isInitialized)fontLarge.dispose()
+        if (::solid.isInitialized)solid.dispose()
+        if (::batch.isInitialized)batch.dispose()
+    }
 }

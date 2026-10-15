@@ -1,31 +1,57 @@
-name: Android build
+name: Android build & preview release
+
 on:
   push:
     branches: [main, 'feature/**']
   pull_request:
     branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: write
+
 jobs:
-  assemble:
+  android:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-      - name: Verify Android SDK
-        run: test -d "$ANDROID_HOME/platforms" && echo "Using preinstalled Android SDK"
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.14.3'
-      - name: Assemble debug APK
-        run: gradle :app:assembleDebug --stacktrace
+      - name: Build APK and unsigned AAB
+        run: gradle :app:testDebugUnitTest :app:assembleDebug :app:bundleRelease --stacktrace
+      - name: Verify build outputs
+        run: |
+          test -s app/build/outputs/apk/debug/app-debug.apk
+          test -s app/build/outputs/bundle/release/app-release.aab
+          unzip -t app/build/outputs/apk/debug/app-debug.apk > /dev/null
+          for asset in screen_menu.jpg screen_map.jpg screen_skins.jpg bird_idle.png \
+                       pillar_1_top.png pillar_6_bottom.png bg_6.jpg ui_36.fnt music.ogg; do
+            unzip -Z -1 app/build/outputs/apk/debug/app-debug.apk | grep -Fxq "assets/$asset" \
+              || { echo "MISSING APK ASSET: $asset"; exit 1; }
+          done
+          unzip -t app/build/outputs/bundle/release/app-release.aab > /dev/null
       - uses: actions/upload-artifact@v4
-        if: success()
         with:
-          name: skypeep-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: SkyPeep-Android-${{ github.run_number }}
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
+      - name: Publish GitHub preview release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/feature/skypeep-android-foundation'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="v0.2.2-preview.${GITHUB_RUN_NUMBER}"
+          gh release create "$VERSION" \
+            app/build/outputs/apk/debug/app-debug.apk \
+            app/build/outputs/bundle/release/app-release.aab \
+            --target "$GITHUB_SHA" \
+            --title "SkyPeep $VERSION" \
+            --prerelease \
+            --notes 'Android preview of SkyPeep with original 2D visual assets, six level themes and game screens. Debug APK is for testing. The AAB is UNSIGNED and cannot be uploaded to Google Play without app signing. Visual and device smoke testing is still required.'

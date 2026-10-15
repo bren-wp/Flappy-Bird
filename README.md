@@ -1,25 +1,37 @@
-# SkyPeep
+<div align="center">
 
-A colorful 2D mobile bird-flight adventure for Android, featuring an original aviator-bird mascot and a floating-islands world.
+# 🐦 SkyPeep
 
-## Development status
+**Six fantastic sky worlds. One brave little aviator. Your next flight starts here.**
 
-The repository currently contains the initial Android/libGDX foundation and a simple playable flight prototype. The full SkyPeep illustrations, screens, six themed levels, currencies, cosmetics and persistent progress from the previously prepared offline project **have not yet been migrated**. Do not present this branch as feature-complete or visually identical to the supplied mockups.
+![SkyPeep gameplay](assets/previews/gameplay.jpg)
 
-## Android
+A vivid 2D Android arcade adventure with floating islands, enchanted ruins, glowing crystals and a blue bird with a red scarf.
 
-- Kotlin + libGDX
-- Android SDK 36, minimum SDK 23
-- Continuous integration assembles a debug APK and uploads it as a GitHub Actions artifact.
+</div>
 
-## Planned art direction
+## Explore the sky
 
-Sky Start · Cloud Pass · Crystal Drop · Wind Gate · Moon Glow · Sun Peak
+| Home | Six worlds | Your bird |
+|:---:|:---:|:---:|
+| ![Main menu](assets/previews/menu.jpg) | ![Level select](assets/previews/levels.jpg) | ![Skins](assets/previews/skins.jpg) |
 
-The design uses a blue bird with aviator goggles and a red scarf, approachable flat 2D art, branded screen layouts, and level-specific obstacle styles.
+Fly through **Sky Start**, **Cloud Pass**, **Crystal Drop**, **Wind Gate**, **Moon Glow** and **Sun Peak**. Each world features distinct, original 2D scenery and obstacle styling.
 
-## Build
+### What is inside
 
-`gradle :app:assembleDebug`
+- 🎮 Responsive touch-to-flap flight and score progression
+- 🗺️ Six themed levels with stars and unlocks
+- 🐦 Three-frame character flight animation
+- ✨ Collectible coins, gems and alternate bird skins
+- 🏆 Personal bests and locally saved progress
+- 🔊 Music, sound effects and pause/resume
+- 📤 Share your score through Android
 
-No signing keys or production release credentials are committed to the repository.
+## Android builds
+
+Download the newest **preview** release from [GitHub Releases](https://github.com/bren-wp/Flappy-Bird/releases). Debug APKs are installable for testing; bundled AABs are intentionally **unsigned** until release signing is configured. The app's final testing and store readiness have not been certified.
+
+## Credits
+
+SkyPeep illustrations were created for this project using the user-provided design references. Android implementation uses Kotlin and [libGDX](https://libgdx.com/). See [LICENSE](LICENSE) for repository licensing.
