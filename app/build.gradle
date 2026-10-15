@@ -10,8 +10,8 @@ android {
         applicationId 'com.brendigo.skypeep'
         minSdk 23
         targetSdk 36
-        versionCode 14
-        versionName '0.3.2'
+        versionCode 15
+        versionName '0.3.3'
     }
     sourceSets.main {
         manifest.srcFile 'AndroidManifest.xml'

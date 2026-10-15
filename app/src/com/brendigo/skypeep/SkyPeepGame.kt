@@ -660,13 +660,14 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         image("hud_right_$level", 635f, H-124f, 191f, 115f)
         image("hud_pause_$level", 811f, H-129f, 125f, 122f)
         image("hud_score_$level", 286f, H-218f, 367f, 210f)
-        // Cover only the numeric text within the reference plates.
-        badge("dark",126f,H-100f,113f,63f)
-        fitted(coins.toString(),H-55f,fontSmall,1.9f,103f,182f)
-        badge("dark",739f,H-99f,60f,63f)
-        fitted(gems.toString(),H-53f,fontSmall,1.9f,55f,767f)
-        badge("score",387f,H-133f,160f,101f)
-        fitted(score.toString(),H-59f,fontLarge,1.20f,153f)
+        // The original six wallet plates are now cleaned at build time.
+        // Keep illustrated gemstone, coin and edge strokes 1:1; no generic
+        // overlay pills that hide the original decorative cyan borders.
+        fitted(SkyPeepHudNumbers.compact(coins),H-55f,fontSmall,1.78f,115f,191f)
+        fitted(SkyPeepHudNumbers.compact(gems),H-53f,fontSmall,1.75f,63f,766f)
+        badge("score",387f,H-135f,160f,102f)
+        // Align the changing score inside the illustrated winged header.
+        fitted(score.toString(),H-37f,fontLarge,1.10f,139f)
     }
 
     private fun drawCoin(x:Float,y:Float,r:Float) {
