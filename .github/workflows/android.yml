@@ -78,7 +78,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
+      - name: Verify runner Android SDK
+        run: test -d "$ANDROID_HOME/platforms" && echo "Android SDK available"
       - uses: actions/download-artifact@v4
         with:
           name: SkyPeep-Android-${{ github.run_number }}
