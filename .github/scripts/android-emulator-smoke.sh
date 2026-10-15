@@ -104,4 +104,25 @@ capture pause PAUSE
 tap_ui 460 1040
 capture pause-home MENU
 echo "PASS: all major SkyPeep screens launched without process death."
+
+# Diagnostic-only level override exists exclusively in debuggable APKs.
+# Capture every restored world on a real Android emulator before publication.
+for world in 1 2 3 4 5 6; do
+  adb logcat -c
+  adb shell am force-stop com.brendigo.skypeep
+  adb shell am start -W --ei sky_peep_qa_world "$world" -n com.brendigo.skypeep/.MainActivity
+  sleep 5
+  adb shell pidof com.brendigo.skypeep >/dev/null || {
+    echo "FAIL: World $world crashed on launch"
+    exit 1
+  }
+  last="$(adb logcat -d -s SkyPeepNav:I '*:S' | grep 'screen=' | tail -n 1 || true)"
+  echo "SkyPeep world $world => $last"
+  if [[ "$last" != *"screen=PLAY"* ]]; then
+    echo "FAIL: World $world did not open gameplay"
+    exit 1
+  fi
+  adb exec-out screencap -p > "smoke-results/world-$world.png"
+done
+echo "PASS: all six reconstructed worlds opened and rendered."
 echo "PASS: Android app process survives boot and splash navigation."

@@ -28,7 +28,7 @@ import kotlin.math.min
 import kotlin.math.sqrt
 
 /** All locations refer to the original 941x1672 portrait artwork. No scrolling. */
-class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : ApplicationAdapter() {
+class SkyPeepGame(private val shareText: ((String) -> Unit)? = null, private val qaWorld: Int = 0) : ApplicationAdapter() {
     companion object {
         private const val W = 941f
         private const val H = 1672f
@@ -139,6 +139,10 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
         } catch (_: Exception) { music = null }
         Gdx.input.setCatchKey(Input.Keys.BACK, true)
         Gdx.input.setCatchKey(Input.Keys.ESCAPE, true)
+        if (qaWorld in 1..MAX_LEVEL) {
+            unlocked = MAX_LEVEL
+            begin(qaWorld)
+        }
     }
 
     private fun loadLevelArt(newLevel: Int) {

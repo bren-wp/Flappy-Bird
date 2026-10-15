@@ -10,8 +10,8 @@ android {
         applicationId 'com.brendigo.skypeep'
         minSdk 23
         targetSdk 36
-        versionCode 8
-        versionName '0.2.6'
+        versionCode 9
+        versionName '0.2.7'
     }
     sourceSets.main {
         manifest.srcFile 'AndroidManifest.xml'
@@ -50,6 +50,7 @@ dependencies {
 def artParts = fileTree(dir: "$rootDir/assets/pack", include: 'part-*')
 tasks.register('restoreSkyPeepArtwork') {
     inputs.files(artParts)
+    inputs.file(file("$rootDir/tools/RebuildWorlds.java"))
     outputs.dir(layout.buildDirectory.dir('generated/skypeep-assets'))
     doLast {
         def ordered = artParts.files.sort { it.name }
@@ -73,6 +74,14 @@ tasks.register('restoreSkyPeepArtwork') {
         copy {
             from zipTree(artZip)
             into file("$buildDir/generated/skypeep-assets")
+        }
+        // Source art is immutable and hash-checked. The in-game backgrounds
+        // are rebuilt from these assets to erase fixed bird/pillars/HUD ghosts.
+        def outputAssets = file("$buildDir/generated/skypeep-assets")
+        project.exec {
+            commandLine 'java', '-Djava.awt.headless=true',
+                file("$rootDir/tools/RebuildWorlds.java").absolutePath,
+                outputAssets.absolutePath
         }
     }
 }
