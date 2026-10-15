@@ -147,13 +147,39 @@ class RebuildWorlds {
         } finally {writer.dispose();}
         if(Files.size(file)<20000)throw new IOException("Invalid clean art size: "+file);
     }
+    /** Clears cropped screenshot header fragments without changing source artwork. */
+    private static void removePillarHeader(Path assets,int world) throws IOException {
+        Path file=assets.resolve("pillar_"+world+"_top.png");
+        BufferedImage original=ImageIO.read(file.toFile());
+        if(original==null)throw new IOException("Missing illustrated pillar: "+file);
+        BufferedImage image=new BufferedImage(original.getWidth(),original.getHeight(),
+            BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g=image.createGraphics();
+        g.drawImage(original,0,0,null);
+        g.dispose();
+        // Per-image crop thresholds checked against the supplied six top sprites.
+        // Preserve the original cap, leaves, clouds, crystals and gold emblems.
+        int[][] trim={{0,0},{166,35},{232,20},{199,26},{0,0},{298,16},{0,0}};
+        int width=Math.min(image.getWidth(),trim[world][0]);
+        int height=Math.min(image.getHeight(),trim[world][1]);
+        for(int y=0;y<height;y++)for(int x=0;x<width;x++)
+            image.setRGB(x,y,0);
+        if(!ImageIO.write(image,"png",file.toFile()))
+            throw new IOException("PNG writer unavailable: "+file);
+        if(width>0 && ((ImageIO.read(file.toFile()).getRGB(0,0)>>>24)!=0))
+            throw new IOException("Header fragment remains in "+file);
+        if(Files.size(file)<5000)
+            throw new IOException("Truncated illustrated pillar: "+file);
+    }
+
     public static void main(String[] args) throws Exception {
         if(args.length!=1) throw new IllegalArgumentException(
             "Usage: java -Djava.awt.headless=true tools/RebuildWorlds.java <assets-directory>");
         for(int level=1;level<=6;level++){
             Path path=Path.of(args[0],"bg_"+level+".jpg");
             rebuild(path,level);
-            System.out.println("CLEAN WORLD "+level+" "+Files.size(path)+" bytes");
+            removePillarHeader(Path.of(args[0]),level);
+            System.out.println("CLEAN WORLD "+level+" "+Files.size(path)+" bytes; cleaned top pillar");
         }
     }
 }
