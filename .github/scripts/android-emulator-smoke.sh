@@ -145,4 +145,26 @@ for skin in 0 1 2 3 4; do
   adb exec-out screencap -p > "smoke-results/skin-$skin.png"
 done
 echo "PASS: five bird skins displayed during Android gameplay."
+# The win state uses a DIFFERENT screen composition from the lose-only
+# GAME OVER art. Verify it actually opens as RESULT and the NEXT button works.
+adb logcat -c
+adb shell am force-stop com.brendigo.skypeep
+adb shell am start -W --ei sky_peep_qa_world 1 --ez sky_peep_qa_victory true \
+  -n com.brendigo.skypeep/.MainActivity
+sleep 4
+adb shell pidof com.brendigo.skypeep >/dev/null || {
+  echo "FAIL: victory screen crashed"; exit 1;
+}
+result="$(adb logcat -d -s SkyPeepNav:I '*:S' | grep 'screen=' | tail -n 1 || true)"
+if [[ "$result" != *"screen=RESULT"* ]]; then
+  echo "FAIL: expected victory RESULT, got $result"; exit 1;
+fi
+adb exec-out screencap -p > smoke-results/victory.png
+tap_ui 470 1380
+sleep 3
+next="$(adb logcat -d -s SkyPeepNav:I '*:S' | grep 'screen=' | tail -n 1 || true)"
+if [[ "$next" != *"screen=PLAY"* ]]; then
+  echo "FAIL: NEXT from victory didn't open gameplay: $next"; exit 1;
+fi
+echo "PASS: victory scene and NEXT action."
 echo "PASS: Android app process survives boot and splash navigation."
