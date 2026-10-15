@@ -586,20 +586,19 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
             centered("3 STARS",H-708f,fontSmall)
         }
         // Static illustration labels remain; the actual run values replace sample values.
-        val panel=Color(.97f,.90f,.78f,1f)
-        drawRect(201f,H-947f,157f,95f,panel)
-        drawRect(399f,H-947f,165f,95f,panel)
-        drawRect(673f,H-947f,115f,95f,panel)
-        label(score.toString(),208f,H-873f,fontLarge)
-        label(best.toString(),410f,H-873f,fontLarge)
-        label(earnedCoins.toString(),668f,H-873f,fontLarge)
-        val progress = min(1f, score.toFloat() / targetScore())
-        drawRect(300f,H-1100f,455f,53f,Color(.42f,.43f,.48f,1f))
-        drawRect(302f,H-1097f,451f*progress,46f,Color(.12f,.58f,.93f,1f))
-        centered("$score / ${targetScore()}",H-1059f,fontSmall,526f)
-        if (resultWon) {
-            drawRect(319f,H-1438f,310f,182f,Color(.12f,.75f,.22f,.55f))
-            centered(if(level<MAX_LEVEL) "NEXT" else "REPLAY",H-1350f,fontSmall,475f)
+        badge("cream",201f,H-947f,153f,90f)
+        badge("cream",402f,H-947f,160f,90f)
+        badge("cream",665f,H-947f,122f,90f)
+        fitted(score.toString(),H-874f,fontLarge,1f,142f,277f,Color.valueOf("673A22"))
+        fitted(best.toString(),H-874f,fontLarge,1f,148f,483f,Color.valueOf("673A22"))
+        fitted(earnedCoins.toString(),H-874f,fontLarge,1f,112f,726f,Color.valueOf("673A22"))
+        val progress = min(1f,score.toFloat()/targetScore())
+        badge("dark",293f,H-1100f,463f,57f)
+        if(progress>.02f) badge("blue",299f,H-1095f,450f*progress,47f)
+        fitted("$score / ${targetScore()}",H-1058f,fontSmall,1.6f,409f,526f)
+        if(resultWon) {
+            badge("green",315f,H-1432f,316f,176f)
+            fitted(if(level<MAX_LEVEL) "NEXT" else "REPLAY",H-1350f,fontSmall,1.65f,300f,475f)
         }
     }
 
@@ -627,21 +626,26 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
     }
 
     private fun drawSettings() {
-        drawRect(0f,0f,W,H,Color(0f,.05f,.13f,.72f))
-        drawRect(86f,390f,769f,1010f,Color(.95f,.89f,.75f,.98f))
-        drawRect(106f,1240f,728f,142f,Color(.20f,.55f,.90f,1f))
-        centered("SETTINGS",1315f,fontLarge)
-        val names=arrayOf("MUSIC", "SOUND EFFECTS", "VIBRATION", "LANGUAGE")
-        val value=arrayOf(if(musicEnabled) "ON" else "OFF",if(effectsEnabled) "ON" else "OFF",
-            if(vibrationEnabled) "ON" else "OFF", "ENGLISH")
-        for (i in names.indices) {
-            val y=1003f-i*143f
-            drawRect(135f,y,665f,110f,Color(.11f,.36f,.67f,.99f))
-            label(names[i],160f,y+72f,fontSmall)
-            label(value[i],if(i==3) 610f else 690f,y+72f,fontSmall)
+        // Branded parchment and wooden controls, shared with the PAUSED art style.
+        drawRect(0f,0f,W,H,Color(0f,.07f,.17f,.68f))
+        badge("cream",91f,348f,759f,1020f)
+        badge("wood",132f,1214f,677f,139f)
+        fitted("SETTINGS",1300f,fontLarge,1.65f,627f)
+        val names=arrayOf("MUSIC","SOUND EFFECTS","VIBRATION","LANGUAGE")
+        for(i in names.indices) {
+            val yy=1010f-i*143f
+            badge("wood",137f,yy,666f,119f)
+            label(names[i],162f,yy+77f,fontSmall)
+            if(i<3) {
+                toggle(657f,yy+28f,when(i) {
+                    0 -> musicEnabled
+                    1 -> effectsEnabled
+                    else -> vibrationEnabled
+                })
+            } else fitted("ENGLISH",yy+77f,fontSmall,1.1f,124f,715f)
         }
-        drawRect(195f,355f,553f,140f,Color(.22f,.70f,.25f,1f))
-        centered("BACK",446f,fontLarge)
+        badge("green",185f,243f,575f,129f)
+        fitted("BACK",327f,fontLarge,1.45f,531f)
     }
 
     /** Rounded, antialiased-like gradient chrome rendered once, reused on each screen. */
@@ -686,7 +690,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
 
     private fun toggle(x:Float,y:Float,enabled:Boolean) {
         badge(if(enabled) "green" else "red",x,y,112f,61f)
-        badge("cream",x+if(enabled) 57f else 7f,y+7f,48f,47f)
+        badge("cream",x+(if(enabled) 57f else 7f),y+7f,48f,47f)
     }
 
     private fun fitted(value:String,baseline:Float,font:BitmapFont,size:Float,
