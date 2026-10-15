@@ -12,8 +12,9 @@ class MainActivity : AndroidApplication() {
         val config = AndroidApplicationConfiguration().apply { useImmersiveMode = true }
         // QA worlds are addressable ONLY in debuggable APKs. Production
         // releases cannot bypass level progression through an Intent.
-        val qaWorld = if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0)
-            intent.getIntExtra("sky_peep_qa_world", 0) else 0
+        val debuggable = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        val qaWorld = if (debuggable) intent.getIntExtra("sky_peep_qa_world", 0) else 0
+        val qaSkin = if (debuggable) intent.getIntExtra("sky_peep_qa_skin", -1) else -1
         initialize(SkyPeepGame(shareText = { result ->
             runOnUiThread {
                 val intent = Intent(Intent.ACTION_SEND).apply {
@@ -22,6 +23,6 @@ class MainActivity : AndroidApplication() {
                 }
                 startActivity(Intent.createChooser(intent, "Share SkyPeep score"))
             }
-        }, qaWorld = qaWorld), config)
+        }, qaWorld = qaWorld, qaSkin = qaSkin), config)
     }
 }

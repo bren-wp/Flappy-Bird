@@ -125,4 +125,24 @@ for world in 1 2 3 4 5 6; do
   adb exec-out screencap -p > "smoke-results/world-$world.png"
 done
 echo "PASS: all six reconstructed worlds opened and rendered."
+# Each purchased skin must render and keep the app alive on the Android emulator.
+# The override is ignored by production (non-debuggable) builds.
+for skin in 0 1 2 3 4; do
+  adb logcat -c
+  adb shell am force-stop com.brendigo.skypeep
+  adb shell am start -W --ei sky_peep_qa_world 1 --ei sky_peep_qa_skin "$skin" \
+    -n com.brendigo.skypeep/.MainActivity
+  sleep 3
+  adb shell pidof com.brendigo.skypeep >/dev/null || {
+    echo "FAIL: Bird skin $skin crashes on launch"
+    exit 1
+  }
+  current="$(adb logcat -d -s SkyPeepNav:I '*:S' | grep 'screen=' | tail -n 1 || true)"
+  if [[ "$current" != *"screen=PLAY"* ]]; then
+    echo "FAIL: Skin $skin did not enter gameplay: $current"
+    exit 1
+  fi
+  adb exec-out screencap -p > "smoke-results/skin-$skin.png"
+done
+echo "PASS: five bird skins displayed during Android gameplay."
 echo "PASS: Android app process survives boot and splash navigation."

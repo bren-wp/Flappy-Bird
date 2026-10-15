@@ -28,7 +28,9 @@ import kotlin.math.min
 import kotlin.math.sqrt
 
 /** All locations refer to the original 941x1672 portrait artwork. No scrolling. */
-class SkyPeepGame(private val shareText: ((String) -> Unit)? = null, private val qaWorld: Int = 0) : ApplicationAdapter() {
+class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
+                  private val qaWorld: Int = 0,
+                  private val qaSkin: Int = -1) : ApplicationAdapter() {
     companion object {
         private const val W = 941f
         private const val H = 1672f
@@ -57,6 +59,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null, private val
     private lateinit var solid: Texture
     private val chrome = mutableMapOf<String, com.badlogic.gdx.graphics.g2d.NinePatch>()
     private val chromeTextures = mutableMapOf<String, Texture>()
+    private var costumes: Map<Int, Texture> = emptyMap()
     private var music: Music? = null
     private val sounds = mutableMapOf<String, Sound>()
     private val tmp = GlyphLayout()
@@ -127,6 +130,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null, private val
         solid = Texture(pixel)
         pixel.dispose()
         prepareChrome()
+        costumes = SkyPeepBirdCostumes.prepare()
         for (kind in arrayOf("flap", "coin", "win", "fail", "click")) {
             try { sounds[kind] = Gdx.audio.newSound(Gdx.files.internal("$kind.wav")) }
             catch (_: Exception) { /* audio is optional on unsupported devices */ }
@@ -141,6 +145,11 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null, private val
         Gdx.input.setCatchKey(Input.Keys.ESCAPE, true)
         if (qaWorld in 1..MAX_LEVEL) {
             unlocked = MAX_LEVEL
+            if(qaSkin in 0..4) {
+                selectedSkin = qaSkin
+                ownedSkins[qaSkin] = true
+                Gdx.app.log("SkyPeepSkin","skin=" + SkyPeepSkinCatalog.get(qaSkin).name)
+            }
             begin(qaWorld)
         }
     }
@@ -350,10 +359,10 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null, private val
             toast("${skinName(skin)} EQUIPPED")
             return
         }
-        val costs = intArrayOf(0,500,800,120,1000)
-        val useGem = skin == 3
-        val price=costs[skin]
-        if ((if (useGem) gems else coins) < price) {
+        val choice = SkyPeepSkinCatalog.get(skin)
+        val useGem = choice.currency == SkinCurrency.GEMS
+        val price = choice.price
+        if (!choice.affordable(coins,gems)) {
             toast("NOT ENOUGH ${if (useGem) "GEMS" else "COINS"}")
             playSound("fail")
         } else {
@@ -543,6 +552,10 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null, private val
         batch.color=alt
         batch.draw(tx,BIRD_X,birdY,BIRD_W,BIRD_H)
         batch.color=Color.WHITE
+        // Separate costume layer remains crisp across each of the 3 wing poses.
+        if (selectedSkin != 0) costumes[selectedSkin]?.let { costume ->
+            batch.draw(costume, BIRD_X + 54f, birdY + BIRD_H - 90f, 140f, 84f)
+        }
     }
 
     private fun drawHUD() {
@@ -755,7 +768,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null, private val
     }
     private fun levelTitle(i:Int)=arrayOf("Sky Start","Cloud Pass","Crystal Drop",
         "Wind Gate","Moon Glow","Sun Peak")[i.coerceIn(1,MAX_LEVEL)-1]
-    private fun skinName(i:Int)=arrayOf("Default","Captain","Forest","Cosmic","Royal")[i.coerceIn(0,4)]
+    private fun skinName(i:Int)=SkyPeepSkinCatalog.get(i).name
     private fun playSound(kind:String) {
         if (effectsEnabled) try { sounds[kind]?.play(.45f) } catch (_:Exception) { }
     }
@@ -789,6 +802,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null, private val
         if (::fontLarge.isInitialized)fontLarge.dispose()
         if (::solid.isInitialized)solid.dispose()
         chromeTextures.values.forEach { it.dispose() }
+        costumes.values.forEach { it.dispose() }
         if (::batch.isInitialized)batch.dispose()
     }
 }
