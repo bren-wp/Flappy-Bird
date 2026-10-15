@@ -35,6 +35,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
         private const val BIRD_X = 172f
         private const val BIRD_W = 245f
         private const val BIRD_H = 215f
+        // Rendered pillar assets occupy the full width, including their caps.
+        private const val GATE_WIDTH = 275f
         private const val MAX_LEVEL = 6
     }
 
@@ -48,6 +50,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
     private lateinit var viewport: FitViewport
     private lateinit var prefs: Preferences
     private val pictures = mutableMapOf<String, Texture>()
+    private var loadedLevelArt = 0
     private lateinit var fontSmall: BitmapFont
     private lateinit var fontLarge: BitmapFont
     private lateinit var solid: Texture
@@ -105,12 +108,9 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
 
         for (name in arrayOf("splash", "menu", "map", "pause", "over", "skins"))
             load("screen_$name", "jpg")
-        for (i in 1..MAX_LEVEL) {
-            load("bg_$i", "jpg")
-            load("pillar_${i}_top")
-            load("pillar_${i}_bottom")
-            for (part in arrayOf("left", "score", "right", "pause")) load("hud_${part}_$i")
-        }
+        // Only retain textures for the selected level. Preloading all six worlds
+        // multiplied the texture-memory footprint on lower-end Android devices.
+        loadLevelArt(level)
         for (pose in arrayOf("idle", "up", "down")) load("bird_$pose")
         load("coin_asset")
         load("gem_asset")
@@ -134,6 +134,24 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
         Gdx.input.setCatchKey(Input.Keys.BACK, true)
         Gdx.input.setCatchKey(Input.Keys.ESCAPE, true)
     }
+
+    private fun loadLevelArt(newLevel: Int) {
+        require(newLevel in 1..MAX_LEVEL)
+        if (loadedLevelArt == newLevel) return
+        if (loadedLevelArt != 0) {
+            for (asset in levelArtNames(loadedLevelArt)) {
+                pictures.remove(asset)?.dispose()
+            }
+        }
+        for (asset in levelArtNames(newLevel)) {
+            load(asset, if (asset.startsWith("bg_")) "jpg" else "png")
+        }
+        loadedLevelArt = newLevel
+    }
+
+    private fun levelArtNames(world: Int): List<String> =
+        listOf("bg_$world", "pillar_${world}_top", "pillar_${world}_bottom") +
+            listOf("left", "score", "right", "pause").map { "hud_${it}_$world" }
 
     private fun load(name: String, suffix: String = "png") {
         val texture = Texture(Gdx.files.internal("$name.$suffix"))
@@ -340,6 +358,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
 
     private fun begin(chosen: Int) {
         level = chosen.coerceIn(1, unlocked)
+        loadLevelArt(level)
         screen = Screen.PLAY
         score=0
         earnedCoins=0
@@ -381,7 +400,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
         while (iterator.hasNext()) {
             val gate=iterator.next()
             gate.x -= moveSpeed * dt
-            val gateWidth=240f
+            val gateWidth=GATE_WIDTH
             val topLimit=gate.centerY+gap*.5f
             val bottomLimit=gate.centerY-gap*.5f
             val hitLeft = BIRD_X + 48f
@@ -455,7 +474,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
             val bottom = pictures["pillar_${level}_bottom"]!!
             val topY = gate.centerY+gap*.5f
             val bottomY = gate.centerY-gap*.5f
-            val pillarWidth=275f
+            val pillarWidth=GATE_WIDTH
             // The pole stems are rendered behind the photographed caps as scalable 2D shapes.
             val tint = when(level) {
                 3 -> Color(.14f,.27f,.43f,1f)
@@ -651,7 +670,12 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
         for (i in 0 until MAX_LEVEL) prefs.putInteger("stars_${i+1}",stars[i])
         prefs.flush()
     }
-    override fun pause() { save();music?.pause() }
+    override fun pause() {
+        // App backgrounding must never leave a live run progressing behind a system UI.
+        if (screen == Screen.PLAY) screen = Screen.PAUSE
+        save()
+        music?.pause()
+    }
     override fun resume() { if (musicEnabled) music?.play() }
     override fun dispose() {
         save()
