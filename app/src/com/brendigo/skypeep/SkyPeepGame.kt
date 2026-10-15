@@ -62,6 +62,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
     private val touch = Vector2()
 
     private var screen = Screen.SPLASH
+    private var lastLoggedScreen: Screen? = null
     private var level = 1
     private var unlocked = 1
     private var resultWon = false
@@ -189,6 +190,10 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
         handleInput()
         if (screen == Screen.PLAY) updateGame(delta)
         syncScreenArt()
+        if (screen != lastLoggedScreen) {
+            Gdx.app.log("SkyPeepNav","screen=" + screen.name)
+            lastLoggedScreen = screen
+        }
         Gdx.gl.glClearColor(.16f,.67f,.96f,1f)
         Gdx.gl.glClear(com.badlogic.gdx.graphics.GL20.GL_COLOR_BUFFER_BIT)
         viewport.apply()
@@ -359,7 +364,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null) : Applicati
     private fun clickSettings(x: Float, y: Float) {
         playSound("click")
         when {
-            hit(x,y,160f,1145f,630f,165f) -> { screen=Screen.MENU; save() }
+            hit(x,y,160f,1280f,630f,240f) -> { screen=Screen.MENU; save() }
             hit(x,y,120f,555f,710f,118f) -> setMusic(!musicEnabled)
             hit(x,y,120f,698f,710f,117f) -> { effectsEnabled=!effectsEnabled; save() }
             hit(x,y,120f,840f,710f,120f) -> { vibrationEnabled=!vibrationEnabled; save() }
