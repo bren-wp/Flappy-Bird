@@ -640,7 +640,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         }
         badge("wood",120f,1180f,701f,155f)
         fitted("LEVEL COMPLETE",1284f,fontLarge,1.32f,644f)
-        fitted(levelTitle(level).uppercase(Locale.ROOT),1152f,fontSmall,1.55f,580f)
+        fitted(levelTitle(level).uppercase(Locale.ROOT),1190f,fontSmall,1.55f,580f)
         // Three individually rendered gold stars, as awarded on completion.
         for (i in 0..2) victoryStar?.let {
             batch.draw(it,291f+i*120f,1009f,115f,115f)
@@ -649,13 +649,13 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         fitted("FLIGHT COMPLETED",924f,fontSmall,1.55f,675f,W/2f,Color.valueOf("6B3D26"))
         badge("dark",137f,706f,313f,146f)
         badge("dark",492f,706f,311f,146f)
-        fitted("SCORE",808f,fontSmall,1.30f,275f,294f)
-        fitted("BEST",808f,fontSmall,1.30f,275f,648f)
-        fitted(score.toString(),752f,fontLarge,1.12f,272f,294f)
-        fitted(best.toString(),752f,fontLarge,1.12f,272f,648f)
+        fitted("SCORE",826f,fontSmall,1.30f,275f,294f)
+        fitted("BEST",826f,fontSmall,1.30f,275f,648f)
+        fitted(score.toString(),781f,fontLarge,1.12f,272f,294f)
+        fitted(best.toString(),781f,fontLarge,1.12f,272f,648f)
         badge("wood",137f,508f,666f,156f)
-        fitted("COINS EARNED",618f,fontSmall,1.45f,608f)
-        fitted("+$earnedCoins",555f,fontLarge,1.1f,608f)
+        fitted("COINS EARNED",643f,fontSmall,1.45f,608f)
+        fitted("+$earnedCoins",586f,fontLarge,1.1f,608f)
         // Touch zones match the illustrated arcade buttons, not the card.
         badge("blue",57f,207f,256f,157f)
         badge("green",334f,207f,274f,157f)
