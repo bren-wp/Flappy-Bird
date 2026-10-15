@@ -32,7 +32,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
                   private val qaWorld: Int = 0,
                   private val qaSkin: Int = -1,
                   private val qaVictory: Boolean = false,
-                  private val qaPillars: Boolean = false) : ApplicationAdapter() {
+                  private val qaPillars: Boolean = false,
+                  private val qaScore: Int = -1) : ApplicationAdapter() {
     companion object {
         private const val W = 941f
         private const val H = 1672f
@@ -166,6 +167,10 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
                 Gdx.app.log("SkyPeepSkin","skin=" + SkyPeepSkinCatalog.get(qaSkin).name)
             }
             begin(qaWorld)
+            if (qaScore >= 0) {
+                score = qaScore.coerceAtMost(999999)
+                Gdx.app.log("SkyPeepHUD","debug_score=$score level=$level")
+            }
             if (qaVictory) {
                 score = targetScore()
                 finish(true)
@@ -665,9 +670,24 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         // overlay pills that hide the original decorative cyan borders.
         fitted(SkyPeepHudNumbers.compact(coins),H-55f,fontSmall,1.78f,115f,191f)
         fitted(SkyPeepHudNumbers.compact(gems),H-53f,fontSmall,1.75f,63f,766f)
-        badge("score",387f,H-135f,160f,102f)
-        // Align the changing score inside the illustrated winged header.
-        fitted(score.toString(),H-37f,fontLarge,1.10f,139f)
+        // Each original score face is cleared and reconstructed during build.
+        // Render changing points on its own themed face, with a crisp outline.
+        drawWingedScore()
+    }
+
+    private fun drawWingedScore() {
+        val text=score.coerceAtLeast(0).toString()
+        val baseline=H-65f
+        val size=1.10f
+        val available=156f
+        val center=W/2f
+        val outline=Color.valueOf("10264B")
+        for (dx in floatArrayOf(-2.5f,0f,2.5f))
+            for (dy in floatArrayOf(-2.5f,0f,2.5f))
+                if (dx!=0f || dy!=0f)
+                    fitted(text,baseline+dy,fontLarge,size,available,center+dx,outline)
+        fitted(text,baseline,fontLarge,size,available,center,
+            if(level==3)Color.valueOf("FFE45C") else Color.WHITE)
     }
 
     private fun drawCoin(x:Float,y:Float,r:Float) {
