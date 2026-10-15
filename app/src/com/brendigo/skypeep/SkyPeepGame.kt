@@ -184,7 +184,6 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
             load(asset, if (asset.startsWith("bg_")) "jpg" else "png")
         }
         pillarStem?.dispose()
-        trailTexture?.dispose()
         pillarStem = SkyPeepPillarStem.create(newLevel)
         loadedLevelArt = newLevel
     }
@@ -419,7 +418,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
             val purchased=SkyPeepTrailCatalog.purchase(
                 offer.id,ownedTrails[offer.id],coins,gems)
             if (!purchased.success) {
-                toast("NOT ENOUGH "+if(offer.currency==TrailCurrency.GEMS)"GEMS" else "COINS")
+                toast("NOT ENOUGH " + (if(offer.currency==TrailCurrency.GEMS) "GEMS" else "COINS"))
                 playSound("fail")
                 return
             }
@@ -428,10 +427,10 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
             ownedTrails[offer.id]=true
             selectedTrail=offer.id
             save()
-            toast(if(purchased.alreadyOwned) "\${offer.name} EQUIPPED"
-                  else "\${offer.name} UNLOCKED")
+            toast(if(purchased.alreadyOwned) "${offer.name} EQUIPPED"
+                  else "${offer.name} UNLOCKED")
             Gdx.app.log("SkyPeepShop",
-                "selected=\${offer.name} coins=$coins gems=$gems")
+                "selected=${offer.name} coins=$coins gems=$gems")
             playSound("win")
             return
         }
@@ -1006,6 +1005,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         costumes.values.forEach { it.dispose() }
         victoryStar?.dispose()
         pillarStem?.dispose()
+        trailTexture?.dispose()
         if (::batch.isInitialized)batch.dispose()
     }
 }
