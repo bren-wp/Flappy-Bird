@@ -15,6 +15,7 @@ class MainActivity : AndroidApplication() {
         val debuggable = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
         val qaWorld = if (debuggable) intent.getIntExtra("sky_peep_qa_world", 0) else 0
         val qaSkin = if (debuggable) intent.getIntExtra("sky_peep_qa_skin", -1) else -1
+        val qaVictory = if (debuggable) intent.getBooleanExtra("sky_peep_qa_victory", false) else false
         initialize(SkyPeepGame(shareText = { result ->
             runOnUiThread {
                 val intent = Intent(Intent.ACTION_SEND).apply {
@@ -23,6 +24,7 @@ class MainActivity : AndroidApplication() {
                 }
                 startActivity(Intent.createChooser(intent, "Share SkyPeep score"))
             }
-        }, qaWorld = qaWorld, qaSkin = qaSkin), config)
+        }, qaWorld = qaWorld, qaSkin = qaSkin,
+            qaVictory = qaVictory), config)
     }
 }

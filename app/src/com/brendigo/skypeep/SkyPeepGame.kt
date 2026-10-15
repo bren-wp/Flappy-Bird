@@ -30,7 +30,8 @@ import kotlin.math.sqrt
 /** All locations refer to the original 941x1672 portrait artwork. No scrolling. */
 class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
                   private val qaWorld: Int = 0,
-                  private val qaSkin: Int = -1) : ApplicationAdapter() {
+                  private val qaSkin: Int = -1,
+                  private val qaVictory: Boolean = false) : ApplicationAdapter() {
     companion object {
         private const val W = 941f
         private const val H = 1672f
@@ -60,6 +61,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     private val chrome = mutableMapOf<String, com.badlogic.gdx.graphics.g2d.NinePatch>()
     private val chromeTextures = mutableMapOf<String, Texture>()
     private var costumes: Map<Int, Texture> = emptyMap()
+    private var victoryStar: Texture? = null
     private var music: Music? = null
     private val sounds = mutableMapOf<String, Sound>()
     private val tmp = GlyphLayout()
@@ -131,6 +133,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         pixel.dispose()
         prepareChrome()
         costumes = SkyPeepBirdCostumes.prepare()
+        victoryStar = createVictoryStar()
         for (kind in arrayOf("flap", "coin", "win", "fail", "click")) {
             try { sounds[kind] = Gdx.audio.newSound(Gdx.files.internal("$kind.wav")) }
             catch (_: Exception) { /* audio is optional on unsupported devices */ }
@@ -151,6 +154,11 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
                 Gdx.app.log("SkyPeepSkin","skin=" + SkyPeepSkinCatalog.get(qaSkin).name)
             }
             begin(qaWorld)
+            if (qaVictory) {
+                score = targetScore()
+                finish(true)
+                Gdx.app.log("SkyPeepQA","victory level=" + level)
+            }
         }
     }
 
@@ -175,7 +183,9 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     private fun syncScreenArt() {
         // Reuse the current illustration while in the same screen, and dispose
         // the previous full-screen JPG before switching to another UI page.
-        val required = SkyPeepAssets.screenFor(screen.name)
+        // Victory must never render the source illustration's baked-in GAME OVER text.
+        val required = if (screen == Screen.RESULT && resultWon) null
+                       else SkyPeepAssets.screenFor(screen.name)
         if (required == loadedScreenArt) return
         loadedScreenArt?.let { pictures.remove(it)?.dispose() }
         if (required != null) load(required, "jpg")
@@ -219,7 +229,12 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
             Screen.MAP -> { image("screen_map", 0f, 0f, W, H); drawMapProgress() }
             Screen.PLAY -> drawGameplay()
             Screen.PAUSE -> { image("screen_pause", 0f, 0f, W, H); drawPauseToggles() }
-            Screen.RESULT -> { image("screen_over", 0f, 0f, W, H); drawResult() }
+            Screen.RESULT -> {
+                if (resultWon) drawVictory() else {
+                    image("screen_over", 0f, 0f, W, H)
+                    drawResult()
+                }
+            }
             Screen.SKINS, Screen.SHOP -> { image("screen_skins", 0f, 0f, W, H); drawSkins() }
             Screen.SETTINGS -> { image("screen_menu", 0f, 0f, W, H); drawSettings() }
         }
@@ -497,8 +512,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         screen = Screen.RESULT
         best=max(best,score)
         if (won) {
-            coins += 100 + level * 15
-            earnedCoins += 100 + level * 15
+            coins += FlightRules.winBonus(level)
+            earnedCoins += FlightRules.winBonus(level)
             stars[level-1]=3
             unlocked=max(unlocked,min(MAX_LEVEL,level+1))
             playSound("win")
@@ -614,12 +629,43 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         // is deliberately unobstructed, and PLAY always uses the selected unlocked level.
     }
 
-    private fun drawResult() {
-        if (resultWon) {
-            drawRect(150f,H-763f,643f,287f,Color(.99f,.89f,.72f,.99f))
-            centered("LEVEL COMPLETE",H-605f,fontLarge)
-            centered("3 STARS",H-708f,fontSmall)
+    private fun drawVictory() {
+        // Winner screen deliberately has its own composition: no sad bird or
+        // baked GAME OVER heading from the loss-only reference artwork.
+        image("bg_$level",0f,0f,W,H)
+        drawRect(0f,0f,W,H,Color(.06f,.16f,.32f,.29f))
+        image("bird_up",366f,1375f,212f,185f)
+        if (selectedSkin != 0) costumes[selectedSkin]?.let {
+            batch.draw(it,412f,1468f,120f,72f)
         }
+        badge("wood",120f,1180f,701f,155f)
+        fitted("LEVEL COMPLETE",1284f,fontLarge,1.32f,644f)
+        fitted(levelTitle(level).uppercase(Locale.ROOT),1152f,fontSmall,1.55f,580f)
+        // Three individually rendered gold stars, as awarded on completion.
+        for (i in 0..2) victoryStar?.let {
+            batch.draw(it,291f+i*120f,1009f,115f,115f)
+        }
+        badge("cream",99f,448f,743f,551f)
+        fitted("FLIGHT COMPLETED",924f,fontSmall,1.55f,675f,W/2f,Color.valueOf("6B3D26"))
+        badge("dark",137f,706f,313f,146f)
+        badge("dark",492f,706f,311f,146f)
+        fitted("SCORE",808f,fontSmall,1.30f,275f,294f)
+        fitted("BEST",808f,fontSmall,1.30f,275f,648f)
+        fitted(score.toString(),752f,fontLarge,1.12f,272f,294f)
+        fitted(best.toString(),752f,fontLarge,1.12f,272f,648f)
+        badge("wood",137f,508f,666f,156f)
+        fitted("COINS EARNED",618f,fontSmall,1.45f,608f)
+        fitted("+$earnedCoins",555f,fontLarge,1.1f,608f)
+        // Touch zones match the illustrated arcade buttons, not the card.
+        badge("blue",57f,207f,256f,157f)
+        badge("green",334f,207f,274f,157f)
+        badge("wood",629f,207f,256f,157f)
+        fitted("HOME",303f,fontSmall,1.72f,231f,185f)
+        fitted(if(level<MAX_LEVEL) "NEXT" else "REPLAY",303f,fontSmall,1.72f,251f,471f)
+        fitted("SHARE",303f,fontSmall,1.72f,232f,757f)
+    }
+
+    private fun drawResult() {
         // Static illustration labels remain; the actual run values replace sample values.
         badge("cream",201f,H-947f,153f,90f)
         badge("cream",402f,H-947f,160f,90f)
@@ -692,6 +738,36 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     }
 
     /** Rounded, antialiased-like gradient chrome rendered once, reused on each screen. */
+    private fun createVictoryStar(): Texture {
+        // Render an antialiased-looking five-point star as one reusable texture.
+        val side=128
+        val pix=Pixmap(side,side,Pixmap.Format.RGBA8888)
+        pix.setColor(0f,0f,0f,0f)
+        pix.fill()
+        fun star(cx:Int,cy:Int,outer:Int,inner:Int,tint:Color) {
+            val xx=IntArray(10)
+            val yy=IntArray(10)
+            for(i in 0..9) {
+                val angle=-Math.PI/2+i*Math.PI/5
+                val r=if(i%2==0)outer else inner
+                xx[i]=cx+(kotlin.math.cos(angle)*r).toInt()
+                yy[i]=cy+(kotlin.math.sin(angle)*r).toInt()
+            }
+            pix.setColor(tint)
+            for(i in 0..9) {
+                val next=(i+1)%10
+                pix.fillTriangle(cx,cy,xx[i],yy[i],xx[next],yy[next])
+            }
+        }
+        star(64,67,59,29,Color.valueOf("49220F"))
+        star(64,61,56,27,Color.valueOf("FFB52D"))
+        star(60,56,47,22,Color.valueOf("FFE34D"))
+        val tx=Texture(pix)
+        tx.setFilter(Texture.TextureFilter.Linear,Texture.TextureFilter.Linear)
+        pix.dispose()
+        return tx
+    }
+
     private fun prepareChrome() {
         val palette=mapOf(
             "dark" to Color.valueOf("103963"),
@@ -810,6 +886,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         if (::solid.isInitialized)solid.dispose()
         chromeTextures.values.forEach { it.dispose() }
         costumes.values.forEach { it.dispose() }
+        victoryStar?.dispose()
         if (::batch.isInitialized)batch.dispose()
     }
 }

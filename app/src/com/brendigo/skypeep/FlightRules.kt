@@ -8,6 +8,8 @@ internal object FlightRules {
 
     fun targetScore(level: Int): Int = 8 + level.coerceIn(1, 6) * 3
 
+    fun winBonus(level: Int): Int = 100 + level.coerceIn(1, 6) * 15
+
     fun intersectsObstacle(
         gateX: Float, gateWidth: Float, gapBottom: Float, gapTop: Float,
         birdLeft: Float, birdRight: Float, birdBottom: Float, birdTop: Float
