@@ -110,7 +110,7 @@ echo "PASS: all major SkyPeep screens launched without process death."
 for world in 1 2 3 4 5 6; do
   adb logcat -c
   adb shell am force-stop com.brendigo.skypeep
-  adb shell am start -W --ei sky_peep_qa_world "$world" -n com.brendigo.skypeep/.MainActivity
+  adb shell am start -W --ei sky_peep_qa_world "$world" --ez sky_peep_qa_pillars true -n com.brendigo.skypeep/.MainActivity
   sleep 5
   adb shell pidof com.brendigo.skypeep >/dev/null || {
     echo "FAIL: World $world crashed on launch"
