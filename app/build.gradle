@@ -10,14 +10,15 @@ android {
         applicationId 'com.brendigo.skypeep'
         minSdk 23
         targetSdk 36
-        versionCode 6
-        versionName '0.2.4'
+        versionCode 7
+        versionName '0.2.5'
     }
     sourceSets.main {
         manifest.srcFile 'AndroidManifest.xml'
         java.srcDirs = ['src/com']
         res.srcDirs = ['res']
         assets.srcDirs = ["$buildDir/generated/skypeep-assets"]
+        jniLibs.srcDirs = ["$buildDir/generated/skypeep-jniLibs"]
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
@@ -26,7 +27,15 @@ android {
     kotlinOptions { jvmTarget = '17' }
 }
 
+configurations {
+    skyPeepNativeArchives
+}
+
 dependencies {
+    skyPeepNativeArchives 'com.badlogicgames.gdx:gdx-platform:1.14.0:natives-armeabi-v7a'
+    skyPeepNativeArchives 'com.badlogicgames.gdx:gdx-platform:1.14.0:natives-arm64-v8a'
+    skyPeepNativeArchives 'com.badlogicgames.gdx:gdx-platform:1.14.0:natives-x86'
+    skyPeepNativeArchives 'com.badlogicgames.gdx:gdx-platform:1.14.0:natives-x86_64'
     testImplementation 'junit:junit:4.13.2'
     implementation 'com.badlogicgames.gdx:gdx:1.14.0'
     implementation 'com.badlogicgames.gdx:gdx-backend-android:1.14.0'
@@ -68,3 +77,36 @@ tasks.register('restoreSkyPeepArtwork') {
     }
 }
 tasks.named('preBuild').configure { dependsOn('restoreSkyPeepArtwork') }
+
+// Android Gradle Plugin does not automatically unpack root-level .so files
+// from the platform's classifier JARs just because they are runtime dependencies.
+// Stage the actual libgdx.so for every ABI under jniLibs so the app can boot.
+tasks.register('stageSkyPeepNatives') {
+    inputs.files(configurations.skyPeepNativeArchives)
+    outputs.dir(layout.buildDirectory.dir('generated/skypeep-jniLibs'))
+    doLast {
+        def abis = ['armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64']
+        def directory = file("$buildDir/generated/skypeep-jniLibs")
+        directory.mkdirs()
+        abis.each { abi ->
+            def source = configurations.skyPeepNativeArchives.files.find {
+                it.name.contains("natives-$abi")
+            }
+            if (source == null) throw new GradleException("Missing libGDX native dependency: $abi")
+            def destination = file("$directory/$abi")
+            destination.mkdirs()
+            copy {
+                from zipTree(source)
+                include '*.so'
+                into destination
+            }
+            if (!file("$destination/libgdx.so").isFile()) {
+                throw new GradleException("Native libgdx.so missing after unpack for $abi")
+            }
+        }
+    }
+}
+tasks.named('preBuild').configure { dependsOn('stageSkyPeepNatives') }
+tasks.matching {
+    it.name.startsWith('merge') && it.name.endsWith('JniLibFolders')
+}.configureEach { dependsOn('stageSkyPeepNatives') }
