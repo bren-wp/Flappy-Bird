@@ -201,4 +201,27 @@ if [[ "$next" != *"screen=PLAY"* ]]; then
   echo "FAIL: NEXT from victory didn't open gameplay: $next"; exit 1;
 fi
 echo "PASS: victory scene and NEXT action."
+# Exact 2D touch boundaries: the invisible gutter must never redirect the
+# player, while visible HOME and loss RETRY must work.
+adb logcat -c
+adb shell am force-stop com.brendigo.skypeep
+adb shell am start -W --ei sky_peep_qa_world 1 --ez sky_peep_qa_victory true \
+  -n com.brendigo.skypeep/.MainActivity
+sleep 3
+tap_ui 320 1380
+sleep 1
+adb shell pidof com.brendigo.skypeep >/dev/null || { echo "FAIL: gap touch crashed"; exit 1; }
+adb exec-out screencap -p > smoke-results/victory-gap.png
+tap_ui 185 1380
+capture victory-home MENU
+
+adb logcat -c
+adb shell am force-stop com.brendigo.skypeep
+adb shell am start -W --ei sky_peep_qa_world 1 --ez sky_peep_qa_loss true \
+  -n com.brendigo.skypeep/.MainActivity
+capture loss RESULT
+tap_ui 470 1380
+capture loss-retry PLAY
+echo "PASS: exact victory hit regions, HOME and loss RETRY."
+
 echo "PASS: Android app process survives boot and splash navigation."

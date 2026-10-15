@@ -18,6 +18,7 @@ class MainActivity : AndroidApplication() {
         val qaVictory = if (debuggable) intent.getBooleanExtra("sky_peep_qa_victory", false) else false
         val qaPillars = if (debuggable) intent.getBooleanExtra("sky_peep_qa_pillars", false) else false
         val qaScore = if (debuggable) intent.getIntExtra("sky_peep_qa_score", -1) else -1
+        val qaLoss = if (debuggable) intent.getBooleanExtra("sky_peep_qa_loss", false) else false
         initialize(SkyPeepGame(shareText = { result ->
             runOnUiThread {
                 val intent = Intent(Intent.ACTION_SEND).apply {
@@ -28,6 +29,6 @@ class MainActivity : AndroidApplication() {
             }
         }, qaWorld = qaWorld, qaSkin = qaSkin,
             qaVictory = qaVictory, qaPillars = qaPillars,
-            qaScore = qaScore), config)
+            qaScore = qaScore, qaLoss = qaLoss), config)
     }
 }
