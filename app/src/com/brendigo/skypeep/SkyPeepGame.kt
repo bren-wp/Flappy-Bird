@@ -33,7 +33,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
                   private val qaSkin: Int = -1,
                   private val qaVictory: Boolean = false,
                   private val qaPillars: Boolean = false,
-                  private val qaScore: Int = -1) : ApplicationAdapter() {
+                  private val qaScore: Int = -1,
+                  private val qaMapUnlocked: Int = -1) : ApplicationAdapter() {
     companion object {
         private const val W = 941f
         private const val H = 1672f
@@ -159,6 +160,16 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         } catch (_: Exception) { music = null }
         Gdx.input.setCatchKey(Input.Keys.BACK, true)
         Gdx.input.setCatchKey(Input.Keys.ESCAPE, true)
+        if (qaMapUnlocked in 1..MAX_LEVEL) {
+            // Debug-only screenshot fixture: a freshly unlocked world must
+            // never be shown as completed before its first successful flight.
+            unlocked = qaMapUnlocked
+            level = qaMapUnlocked
+            for (i in 0 until MAX_LEVEL)
+                stars[i] = if (i < unlocked - 1) 3 else 0
+            screen = Screen.MAP
+            Gdx.app.log("SkyPeepMap","map_loaded unlocked=$unlocked selected=$level")
+        }
         if (qaWorld in 1..MAX_LEVEL) {
             unlocked = MAX_LEVEL
             if(qaSkin in 0..4) {
@@ -317,25 +328,19 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     private fun clickMap(x: Float, y: Float) {
         playSound("click")
         when {
-            hit(x,y,5f,1435f,200f,237f) -> screen = Screen.MENU
-            hit(x,y,580f,1450f,360f,220f) -> begin(level)
+            SkyPeepMapLayout.back.contains(x,y) -> screen = Screen.MENU
+            SkyPeepMapLayout.play.contains(x,y) -> begin(level)
             else -> {
-                val pos = arrayOf(
-                    floatArrayOf(260f,1260f,650f,1490f),
-                    floatArrayOf(540f,1000f,910f,1270f),
-                    floatArrayOf(120f,795f,500f,1080f),
-                    floatArrayOf(490f,585f,880f,864f),
-                    floatArrayOf(135f,315f,530f,632f),
-                    floatArrayOf(545f,195f,915f,498f)
-                )
-                for (i in pos.indices) {
-                    val p=pos[i]
-                    if (hit(x,y,p[0],p[1],p[2]-p[0],p[3]-p[1])) {
-                        if (i+1 <= unlocked) { level=i+1; save(); toast("SELECTED: ${levelTitle(level)}") }
-                        else toast("COMPLETE PREVIOUS LEVEL")
-                        return
-                    }
+                val tapped=SkyPeepMapLayout.worldAt(x,y) ?: return
+                if (tapped > unlocked) {
+                    Gdx.app.log("SkyPeepMap","world_locked=$tapped unlocked=$unlocked")
+                    toast("COMPLETE PREVIOUS LEVEL")
+                    return
                 }
+                level=tapped
+                save()
+                Gdx.app.log("SkyPeepMap","selected_world=$level")
+                toast("SELECTED: ${levelTitle(level)}")
             }
         }
     }
@@ -712,16 +717,33 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     }
 
     private fun drawMapProgress() {
-        // Place unlocked tags on top of the fixed reference locks, without changing the map artwork.
-        val badges=arrayOf(floatArrayOf(705f,1112f),floatArrayOf(345f,903f),
-            floatArrayOf(670f,695f),floatArrayOf(360f,450f),floatArrayOf(733f,278f))
-        for (i in 2..unlocked) {
-            val p=badges[i-2]
-            badge("green",p[0]-47f,H-p[1]-42f,94f,78f)
-            fitted("OK",H-p[1]+22f,fontSmall,1.3f,75f,p[0])
+        // Locked icons in the original supplied map stay intact. Open and
+        // completed islands use different statuses and earned real stars.
+        for(world in 1..MAX_LEVEL) {
+            if (world > unlocked) continue
+            val marker=SkyPeepMapLayout.marker(world)
+            if(world>1) {
+                val cleared=SkyPeepMapProgress.status(world,unlocked,stars[world-1]) ==
+                    MapWorldStatus.COMPLETED
+                badge(if(cleared)"green" else "blue",
+                    marker.x-58f,H-marker.y-35f,116f,70f)
+                fitted(if(cleared)"CLEAR" else "OPEN",H-marker.y+17f,
+                    fontSmall,1.03f,112f,marker.x)
+            }
+            val earned=stars[world-1].coerceIn(0,3)
+            if(earned>0) {
+                val starRow=SkyPeepMapLayout.starRow(world)
+                for(i in 0 until earned) victoryStar?.let { star ->
+                    batch.draw(star,starRow.x-79f+59f*i,
+                        H-starRow.y-25f,51f,51f)
+                }
+            }
+            if(world==level) {
+                badge("wood",marker.x-82f,H-marker.y+47f,164f,55f)
+                fitted("SELECTED",H-marker.y+82f,fontSmall,1f,146f,
+                    marker.x)
+            }
         }
-        // The selected level is indicated when the user taps its island. The background map
-        // is deliberately unobstructed, and PLAY always uses the selected unlocked level.
     }
 
     private fun drawVictory() {
