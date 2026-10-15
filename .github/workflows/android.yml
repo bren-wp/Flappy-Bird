@@ -46,6 +46,10 @@ jobs:
             grep -Fxq "assets/$asset" "$RUNNER_TEMP/skypeep-apk-files.txt" \
               || { echo "MISSING APK ASSET: $asset"; exit 1; }
           done
+          for abi in armeabi-v7a arm64-v8a x86 x86_64; do
+            grep -Fxq "lib/$abi/libgdx.so" "$RUNNER_TEMP/skypeep-apk-files.txt" \
+              || { echo "FATAL: missing libgdx.so for $abi"; exit 1; }
+          done
           unzip -t app/build/outputs/bundle/release/app-release.aab > /dev/null
       - uses: actions/upload-artifact@v4
         with:
@@ -55,18 +59,18 @@ jobs:
             app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
       - name: Publish GitHub preview release
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feature/skypeep-v')
+        if: github.event_name == 'push' && github.ref == 'refs/heads/fix/skypeep-startup-v0.2.5'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="v0.2.4-preview.${GITHUB_RUN_NUMBER}"
+          VERSION="v0.2.5-preview.${GITHUB_RUN_NUMBER}"
           gh release create "$VERSION" \
             app/build/outputs/apk/debug/app-debug.apk \
             app/build/outputs/bundle/release/app-release.aab \
             --target "$GITHUB_SHA" \
             --title "SkyPeep $VERSION" \
             --prerelease \
-            --notes 'Android preview featuring all six original 2D worlds, dynamic world and menu texture loading, corrected gate-width collisions, and safe background pause. Debug APK is for testing. The AAB is UNSIGNED and cannot be uploaded to Google Play without app signing. Visual and device smoke testing is still required.'
+            --notes 'Android startup hotfix: native libgdx.so explicitly packaged for ARM and x86, with emulated startup testing and crash diagnostics. Debug APK is for testing. The AAB is UNSIGNED and cannot be uploaded to Google Play without app signing. Visual and device smoke testing is still required.'
   emulator-smoke:
     name: Boot and launch Android app
     needs: android
