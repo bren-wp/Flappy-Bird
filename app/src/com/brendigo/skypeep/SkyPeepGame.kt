@@ -21,7 +21,7 @@ import com.badlogic.gdx.graphics.g2d.GlyphLayout
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.math.MathUtils
 import com.badlogic.gdx.math.Vector2
-import com.badlogic.gdx.utils.viewport.FitViewport
+import com.badlogic.gdx.utils.viewport.ExtendViewport
 import java.util.Locale
 import kotlin.math.max
 import kotlin.math.min
@@ -55,7 +55,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
 
     private lateinit var batch: SpriteBatch
     private lateinit var camera: OrthographicCamera
-    private lateinit var viewport: FitViewport
+    private lateinit var viewport: ExtendViewport
+    private var visibleFrame = SkyPeepScreenFrame.forPixels(941,1672)
     private lateinit var prefs: Preferences
     private val pictures = mutableMapOf<String, Texture>()
     private var loadedScreenArt: String? = null
@@ -117,8 +118,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     override fun create() {
         batch = SpriteBatch()
         camera = OrthographicCamera()
-        viewport = FitViewport(W, H, camera)
-        viewport.update(Gdx.graphics.width, Gdx.graphics.height, true)
+        viewport = ExtendViewport(W, H, camera)
+        resize(Gdx.graphics.width, Gdx.graphics.height)
         batch.projectionMatrix = camera.combined
         prefs = Gdx.app.getPreferences("SkyPeepSettingsAndProgress")
         best = prefs.getInteger("best", 0).coerceAtLeast(0)
@@ -268,8 +269,18 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     }
 
     override fun resize(width: Int, height: Int) {
-        viewport.update(width, height, true)
+        if (width <= 0 || height <= 0) return
+        visibleFrame = SkyPeepScreenFrame.forPixels(width, height)
+        // ExtendViewport consumes the entire device display. Recenter its
+        // expanded world around the original reference art rather than
+        // shifting the buttons, HUD, collision world or tap targets.
+        viewport.update(width, height, false)
+        camera.position.set(W*.5f, H*.5f, 0f)
         camera.update()
+        Gdx.app.log("SkyPeepViewport",
+            "device=${width}x${height} frame=" +
+            "${visibleFrame.left},${visibleFrame.bottom}.." +
+            "${visibleFrame.right},${visibleFrame.top}")
     }
 
     override fun render() {
@@ -289,6 +300,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         viewport.apply()
         batch.projectionMatrix = camera.combined
         batch.begin()
+        drawFullBleedEdges()
         when (screen) {
             Screen.SPLASH -> image("screen_splash", 0f, 0f, W, H)
             Screen.MENU -> { image("screen_menu", 0f, 0f, W, H); drawMenuWallet() }
@@ -310,6 +322,43 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
             fitted(message,1437f,fontSmall,1.4f,W-290f)
         }
         batch.end()
+    }
+
+    /**
+     * Paint the *real artwork's outer edge pixels* into ExtendViewport's
+     * additional display area. The illustrated 941x1672 UI stays undistorted
+     * and every original touch rectangle remains at its reference position.
+     * No bars are left blank on tall phones or wide tablets.
+     */
+    private fun drawFullBleedEdges() {
+        val name = when(screen) {
+            Screen.PLAY -> "bg_$level"
+            Screen.RESULT -> if(resultWon) "bg_$level" else "screen_over"
+            Screen.SHOP, Screen.SETTINGS -> "screen_menu"
+            Screen.SPLASH -> "screen_splash"
+            Screen.MENU -> "screen_menu"
+            Screen.MAP -> "screen_map"
+            Screen.PAUSE -> "screen_pause"
+            Screen.SKINS -> "screen_skins"
+        }
+        val texture = pictures[name] ?: return
+        val f=visibleFrame
+        if(f.extraY>.01f) {
+            // LibGDX source pixels use top-left origin. These thin strips
+            // extend natural sky above and ground/clouds below the artwork.
+            batch.draw(texture,0f,-f.extraY,W,f.extraY,
+                0,texture.height-4,texture.width,4,false,false)
+            batch.draw(texture,0f,H,W,f.extraY,
+                0,0,texture.width,4,false,false)
+        }
+        if(f.extraX>.01f) {
+            batch.draw(texture,-f.extraX,-f.extraY,
+                f.extraX,H+2f*f.extraY,
+                0,0,4,texture.height,false,false)
+            batch.draw(texture,W,-f.extraY,
+                f.extraX,H+2f*f.extraY,
+                texture.width-4,0,4,texture.height,false,false)
+        }
     }
 
     private fun handleInput() {
@@ -573,7 +622,12 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         verticalSpeed = max(-900f * difficulty.gravityFactor,
             verticalSpeed + (skyCurrent - gravity)*dt)
         birdY += verticalSpeed * dt
-        if (birdY < 38f || birdY + BIRD_H > H - 205f) { finish(false); return }
+        val birdBody=SkyPeepContact.body(BIRD_X,birdY,BIRD_W,BIRD_H)
+        if (SkyPeepContact.hitsWorldEdge(birdBody,
+                visibleFrame.bottom,visibleFrame.top)) {
+            finish(false)
+            return
+        }
         val gap = SkyRouteRules.gap(level,difficulty)
         val moveSpeed = SkyRouteRules.speed(level,difficulty)
         nextGate -= dt
@@ -589,16 +643,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
             val gateWidth=GATE_WIDTH
             val topLimit=gate.centerY+gap*.5f
             val bottomLimit=gate.centerY-gap*.5f
-            val hitLeft = BIRD_X + 48f
-            val hitRight = BIRD_X + BIRD_W - 53f
-            val hitBottom=birdY+52f
-            val hitTop=birdY+BIRD_H-55f
-            if (FlightRules.intersectsObstacle(
-                    gateX = gate.x, gateWidth = gateWidth,
-                    gapBottom = bottomLimit, gapTop = topLimit,
-                    birdLeft = hitLeft, birdRight = hitRight,
-                    birdBottom = hitBottom, birdTop = hitTop
-                )) {
+            if (SkyPeepContact.hitsGate(
+                    birdBody,gate.x,gateWidth,bottomLimit,topLimit)) {
                 finish(false)
                 return
             }
@@ -708,8 +754,10 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
             // Continuous, textured shafts sit behind the original illustrated caps.
             val stemX = gate.x + 53f
             val stemW = pillarWidth - 105f
-            drawStoneStem(stemX,stemW,PillarGeometry.topTailStart(topY,top.height.toFloat()),H)
-            drawStoneStem(stemX,stemW,0f,
+            drawStoneStem(stemX,stemW,
+                PillarGeometry.topTailStart(topY,top.height.toFloat()),
+                visibleFrame.top)
+            drawStoneStem(stemX,stemW,visibleFrame.bottom,
                 PillarGeometry.bottomTailHeight(bottomY,bottom.height.toFloat()))
             image("pillar_${level}_top",gate.x,topY,pillarWidth,top.height.toFloat())
             image("pillar_${level}_bottom",gate.x,bottomY-bottom.height,
@@ -737,8 +785,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
 
     private fun drawStoneStem(x:Float,width:Float,start:Float,end:Float) {
         val tile=pillarStem ?: return
-        var y=max(0f,start)
-        val stop=min(H,end)
+        var y=max(visibleFrame.bottom,start)
+        val stop=min(visibleFrame.top,end)
         while(y<stop-0.5f) {
             val size=min(144f,stop-y)
             // Crop the final partial repeat instead of distorting its texture.
