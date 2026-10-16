@@ -35,7 +35,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
                   private val qaPillars: Boolean = false,
                   private val qaScore: Int = -1,
                   private val qaMapUnlocked: Int = -1,
-                  private val qaLoss: Boolean = false) : ApplicationAdapter() {
+                  private val qaLoss: Boolean = false,
+                  private val qaBackgroundMotion: Boolean = false) : ApplicationAdapter() {
     companion object {
         private const val W = 941f
         private const val H = 1672f
@@ -96,6 +97,9 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     private var flapTimer = 0f
     private var readyForFirstTap = false
     private var animationTime = 0f
+    // Separate motion clock freezes scenery when paused or in a menu.
+    private var flightBackgroundTime = 0f
+    private var lastBackgroundLogSecond = -1
     private var nextGate = 1.5f
     private val gates = mutableListOf<Gate>()
     private var message = ""
@@ -178,6 +182,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
                 Gdx.app.log("SkyPeepSkin","skin=" + SkyPeepSkinCatalog.get(qaSkin).name)
             }
             begin(qaWorld)
+            if (qaBackgroundMotion) readyForFirstTap = false
             if (qaScore >= 0) {
                 score = qaScore.coerceAtMost(999999)
                 Gdx.app.log("SkyPeepHUD","debug_score=$score level=$level")
@@ -243,6 +248,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     override fun render() {
         val delta = Gdx.graphics.deltaTime.coerceIn(0f, .05f)
         animationTime += delta
+        if (screen == Screen.PLAY && !readyForFirstTap) flightBackgroundTime += delta
         if (messageTimer > 0f) messageTimer -= delta
         handleInput()
         if (screen == Screen.PLAY) updateGame(delta)
@@ -485,6 +491,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         birdY=840f
         flapTimer=0f
         animationTime=0f
+        flightBackgroundTime=0f
+        lastBackgroundLogSecond=-1
         readyForFirstTap=true
         save()
     }
@@ -497,6 +505,9 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     }
 
     private fun updateGame(dt: Float) {
+        // Debug-only GL fixture: observe active background movement without
+        // collisions/gravity terminating the run during emulator capture.
+        if (qaBackgroundMotion && qaWorld in 1..MAX_LEVEL) return
         if (readyForFirstTap) return
         flapTimer = max(0f,flapTimer-dt)
         verticalSpeed = max(-900f, verticalSpeed - 1720f*dt)
@@ -593,8 +604,15 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         // subtle depth. No wrap seam, external image, or gameplay collision shift.
         pictures["bg_$level"]?.let { background ->
             val crop = SkyPeepBackgroundMotion.crop(
-                background.width, animationTime, !readyForFirstTap
+                background.width, flightBackgroundTime, !readyForFirstTap
             )
+            if (qaBackgroundMotion && qaWorld in 1..MAX_LEVEL) {
+                val second = flightBackgroundTime.toInt()
+                if (second != lastBackgroundLogSecond) {
+                    Gdx.app.log("SkyPeepBackground", "second=$second offset_px=${crop.sourceX} world=$level")
+                    lastBackgroundLogSecond = second
+                }
+            }
             batch.draw(background,0f,0f,W,H,
                 crop.sourceX,0,crop.sourceWidth,background.height,false,false)
         }
