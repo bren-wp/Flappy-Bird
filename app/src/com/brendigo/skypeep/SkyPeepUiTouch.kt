@@ -33,6 +33,8 @@ internal object SkyPeepUiTouch {
         Rect(25f + 235f * index, 1362f, 188f, 94f)
     }
 
+    fun skinPurchaseRect(skin: Int): Rect = skinPurchaseTargets[skin - 1]
+
     /** 1..4 = Captain, Forest, Cosmic, Royal; null = non-button background. */
     fun skinPurchaseAt(x: Float, yTop: Float): Int? {
         val i = skinPurchaseTargets.indexOfFirst { it.contains(x, yTop) }
@@ -41,14 +43,14 @@ internal object SkyPeepUiTouch {
 
     // Exact same rectangles that drawShop uses for its four BUY/EQUIP badges.
     // A tap on the illustration, price or gap must never deduct currency.
-    fun shopPurchaseAt(x: Float, yTop: Float): Int? {
-        for (id in 0..3) {
-            val cardBottom = 1060f - id * 195f
-            val visibleButtonTop = 1672f - (cardBottom + 27f + 118f)
-            if (Rect(594f, visibleButtonTop, 224f, 118f).contains(x, yTop)) return id
-        }
-        return null
+    fun shopPurchaseRect(id: Int): Rect {
+        require(id in 0..3)
+        val cardBottom = 1060f - id * 195f
+        return Rect(594f, 1672f - (cardBottom + 27f + 118f), 224f, 118f)
     }
+
+    fun shopPurchaseAt(x: Float, yTop: Float): Int? =
+        (0..3).firstOrNull { shopPurchaseRect(it).contains(x, yTop) }
 
     fun shopBack(x: Float, yTop: Float): Boolean =
         Rect(279f, 1290f, 384f, 137f).contains(x, yTop)
