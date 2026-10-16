@@ -9,7 +9,17 @@ internal object SkyPeepBirdLayout {
     const val WIDTH = 295f
     const val HEIGHT = 232f
 
-    // Keep original texture proportions to within source-pixel rounding.
+    // The up and down poses have different native source proportions:
+    // idle 443x349, up 413x370, down 394x347.
+    // Their height and body centre stay fixed; rendered widths are natural.
+    fun widthFor(textureWidth:Int, textureHeight:Int): Float {
+        require(textureWidth>0 && textureHeight>0)
+        return HEIGHT * textureWidth.toFloat() / textureHeight
+    }
+    fun leftFor(textureWidth:Int, textureHeight:Int): Float =
+        (WIDTH-widthFor(textureWidth,textureHeight))*.5f
+
+    // Keep original idle proportions to within source-pixel rounding.
     fun aspectError(): Float =
         kotlin.math.abs(WIDTH / HEIGHT - 443f / 349f)
 
