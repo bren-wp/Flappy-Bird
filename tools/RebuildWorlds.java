@@ -360,6 +360,15 @@ class RebuildWorlds {
         // The world 3/4 replacement corridor follows the real scene's local
         // sky colours instead of a synthetic blue procedural mountain fill.
         int[] matchedSky=(world==3||world==4)?sourceMatchedSky(original,world):null;
+        if(matchedSky!=null)for(int y=1;y<h;y++){
+            // Reject a hard horizontal colour seam in the reconstructed sky.
+            // Original floating islands/clouds remain untouched outside masks.
+            int from=matchedSky[y-1],to=matchedSky[y];
+            for(int shift:new int[]{0,8,16})
+                if(Math.abs(((from>>>shift)&255)-((to>>>shift)&255))>16)
+                    throw new IOException("Hard world-"+world+
+                        " replacement-sky band at row "+y);
+        }
         CoinCircle[] staticCoins=photographedCoins(world);
         int[][] coinSky=new int[staticCoins.length][];
         for(int i=0;i<staticCoins.length;i++)
