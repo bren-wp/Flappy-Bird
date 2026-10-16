@@ -265,17 +265,20 @@ class RebuildWorlds {
             {91,27,276,150},{106,28,264,143},{106,31,267,135},
             {108,29,261,122},{120,27,257,116},{105,24,272,146}
         };
+        // The supplied reference HUD uses a bright winged/cloud score face,
+        // not a dark cyan/blue rectangle. Keep the reference's original wings
+        // and ribbon pixels untouched, and replace only the baked-in score area.
         final int[][] top={
-            {28,151,231},{234,250,255},{110,229,251},
-            {28,82,132},{20,218,248},{19,200,246}
+            {254,255,255},{255,255,255},{250,255,255},
+            {246,255,255},{245,241,255},{255,254,239}
         };
         final int[][] bottom={
-            {5,64,133},{183,230,255},{33,169,233},
-            {11,44,87},{0,133,223},{1,91,191}
+            {200,238,255},{222,248,255},{191,232,255},
+            {212,240,255},{213,215,255},{255,226,164}
         };
         final int[][] edges={
-            {7,57,96},{16,47,97},{11,64,107},
-            {11,35,73},{11,35,85},{7,42,97}
+            {12,69,125},{15,71,128},{8,66,139},
+            {15,75,128},{46,41,127},{143,74,33}
         };
         int[] b=bounds[world-1], a=top[world-1], c=bottom[world-1], e=edges[world-1];
         int x=b[0],y=b[1],w=b[2]-b[0],h=b[3]-b[1];
@@ -286,7 +289,13 @@ class RebuildWorlds {
         g.setStroke(new BasicStroke(3.5f,BasicStroke.CAP_ROUND,BasicStroke.JOIN_ROUND));
         g.setColor(new Color(e[0],e[1],e[2]));
         g.draw(face);
-        g.setColor(new Color(236,251,255,190));
+        // Low-opacity cloud crowns on the light surface give the score the
+        // rounded reference treatment without redrawing any outside pixels.
+        g.setColor(new Color(255,255,255,135));
+        g.fill(new Ellipse2D.Float(x+10,y+11,w*.41f,h*.47f));
+        g.fill(new Ellipse2D.Float(x+w*.33f,y+6,w*.40f,h*.55f));
+        g.fill(new Ellipse2D.Float(x+w*.63f,y+14,w*.28f,h*.42f));
+        g.setColor(new Color(255,255,255,195));
         g.setStroke(new BasicStroke(1.8f,BasicStroke.CAP_ROUND,BasicStroke.JOIN_ROUND));
         g.draw(new Arc2D.Float(x+11,y+8,w-22,52,192,155,Arc2D.OPEN));
         g.dispose();
