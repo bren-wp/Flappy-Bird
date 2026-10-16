@@ -1,8 +1,5 @@
 package com.brendigo.skypeep
 
-import kotlin.math.max
-import kotlin.math.min
-
 /**
  * Fair contact-only collisions for the VISIBLE body of the illustrated bird.
  *
