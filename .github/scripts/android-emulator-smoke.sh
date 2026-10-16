@@ -355,6 +355,24 @@ for dimensions in 1080x2400 720x1280 1200x1920; do
   }
   tap_ui 470 1300
   capture "responsive-menu-$dimensions" MENU
+  # Every major illustrated menu control must still be reachable on unusual
+  # aspect ratios; no screen may require scrolling or manual panning.
+  tap_ui 660 1400
+  capture "responsive-settings-$dimensions" SETTINGS
+  tap_ui 465 1380
+  capture "responsive-settings-back-$dimensions" MENU
+  tap_ui 275 1400
+  capture "responsive-shop-$dimensions" SHOP
+  tap_ui 470 1360
+  capture "responsive-shop-back-$dimensions" MENU
+  tap_ui 660 1230
+  capture "responsive-skins-$dimensions" SKINS
+  tap_ui 100 1560
+  capture "responsive-skins-back-$dimensions" MENU
+  tap_ui 270 1210
+  capture "responsive-levels-$dimensions" MAP
+  tap_ui 95 1540
+  capture "responsive-levels-back-$dimensions" MENU
   # The original PLAY button must have the same physical/touch mapping.
   tap_ui 465 985
   capture "responsive-gameplay-$dimensions" PLAY
