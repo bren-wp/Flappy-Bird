@@ -643,7 +643,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         if (nextGate <= 0f) {
             nextGate=SkyRouteRules.spawnSeconds(level,difficulty)
             val center = MathUtils.random(570f,1110f)
-            gates.add(Gate(W+80f,center,gem=(score>0 && MathUtils.random(0,9)==0)))
+            gates.add(Gate(SkyPeepScreenFrame.pillarSpawnX(visibleFrame),
+                center,gem=(score>0 && MathUtils.random(0,9)==0)))
         }
         val iterator=gates.iterator()
         while (iterator.hasNext()) {
@@ -708,7 +709,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
                 } else precisionStreak=0
                 if (score >= targetScore()) { finish(true); return }
             }
-            if (gate.x < -400f) iterator.remove()
+            if (gate.x < SkyPeepScreenFrame.pillarDespawnX(visibleFrame))
+                iterator.remove()
         }
     }
 
