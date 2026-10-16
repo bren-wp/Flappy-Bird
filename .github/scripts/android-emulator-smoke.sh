@@ -287,4 +287,41 @@ java -Djava.awt.headless=true tools/CompareSkyPeepScreens.java
 test -s smoke-results/visual-comparison.txt || {
   echo "FAIL: screenshot visual comparison report missing"; exit 1;
 }
+# SkyPeep now has three independent route licenses in Settings. Validate real
+# taps, visible controls, saved selection and an actual process restart.
+adb shell pm clear com.brendigo.skypeep >/dev/null
+adb logcat -c
+adb shell am start -W -n com.brendigo.skypeep/.MainActivity
+sleep 5
+adb logcat -d -s SkyPeepDifficulty:I '*:S' | grep -q 'loaded=EXPLORER' || {
+  echo "FAIL: new installation did not default to original Explorer mode"; exit 1;
+}
+tap_ui 470 1300
+capture route-main MENU
+tap_ui 650 1400
+capture route-settings SETTINGS
+tap_ui 695 1040
+capture route-tempest SETTINGS
+adb logcat -d -s SkyPeepDifficulty:I '*:S' | grep -q 'selected=TEMPEST' || {
+  echo "FAIL: difficulty selector not activated"; exit 1;
+}
+adb shell am force-stop com.brendigo.skypeep
+adb logcat -c
+adb shell am start -W -n com.brendigo.skypeep/.MainActivity
+sleep 4
+adb logcat -d -s SkyPeepDifficulty:I '*:S' | grep -q 'loaded=TEMPEST' || {
+  echo "FAIL: difficulty was not persisted across cold restart"; exit 1;
+}
+# Android QA extras are ignored by non-debuggable production builds.
+adb shell am force-stop com.brendigo.skypeep
+adb logcat -c
+adb shell am start -W --ei sky_peep_qa_world 4 \
+  --ei sky_peep_qa_difficulty 2 --ez sky_peep_qa_background_motion true \
+  -n com.brendigo.skypeep/.MainActivity
+capture route-wind-gate PLAY
+adb logcat -d -s SkyPeepDifficulty:I '*:S' | grep -q 'loaded=TEMPEST' || {
+  echo "FAIL: Wind Gate did not start in the selected Tempest license"; exit 1;
+}
+echo "PASS: three-mode difficulty selection persists and Wind Gate runs."
+
 echo "PASS: Android app process survives boot and splash navigation."
