@@ -359,6 +359,29 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
                 f.extraX,H+2f*f.extraY,
                 texture.width-4,0,4,texture.height,false,false)
         }
+        // Shop and Settings darken the main-menu art beneath their cream
+        // panels. Continue that EXACT overlay into the expanded margins:
+        // otherwise tall devices show a bright rectangular seam around the
+        // centre panel while its photographed background is dimmed.
+        val shade=when(screen) {
+            Screen.SHOP -> Color(.04f,.13f,.30f,.72f)
+            Screen.SETTINGS -> Color(0f,.07f,.17f,.68f)
+            Screen.RESULT -> if(resultWon) Color(.06f,.16f,.32f,.29f)
+                             else null
+            else -> null
+        }
+        if(shade!=null) {
+            if(f.extraY>.01f) {
+                drawRect(0f,-f.extraY,W,f.extraY,shade)
+                drawRect(0f,H,W,f.extraY,shade)
+            }
+            if(f.extraX>.01f) {
+                drawRect(-f.extraX,-f.extraY,f.extraX,
+                    H+2f*f.extraY,shade)
+                drawRect(W,-f.extraY,f.extraX,
+                    H+2f*f.extraY,shade)
+            }
+        }
     }
 
     private fun handleInput() {
