@@ -1,4 +1,4 @@
-# SkyPeep 0.3.12 — Source pixel preservation QA
+# SkyPeep 0.3.13 — Source pixel preservation QA
 
 ## Scope
 The supplied design reference remains authoritative. Screens and worlds must eventually match without using static screenshots as fake interactive UI.
@@ -8,6 +8,14 @@ The supplied design reference remains authoritative. Screens and worlds must eve
 - Asset builder prints percentage of original midground retained and fails below 49% for either world.
 - Gameplay bird now uses an undistorted 295×232 rendering rect consistent with the original 443×349 texture. Costumes, pickup positions and collisions follow the bird layout.
 - Java real-emulator comparison reports an additional untouched original-island ROI metric for Sky Start alongside existing screen MAE.
+
+### Corrective verification after v0.3.12
+
+- PR #25 was merged and its preview published successfully, but a subsequent review detected that Cloud Pass's **lower fixed-pillar plume oval** also replaced genuine floating-island foliage and part of the waterfall.
+- Removed the overwide oval centred at source (127,764), radius (218,52). The original illustrated foliage and waterfall remain unmodified in that section. Dynamic lower pillars still render from separate sprites and shafts.
+- Added a **pixel-exact source-retention guard before JPEG compression** for reference-scene points (75,780), (100,780), (160,783), (100,800), and (245,810) in the 706×1254 generated artwork. If a future source clean-up touches any of those unrelated island/waterfall pixels, the Android build fails.
+- The mask-coverage and visual pixel-comparison metrics remain separate: more retained original pixels does **not** prove every game frame is 1:1.
+- v0.3.13 uses Android versionCode 25; the unsigned AAB is not a production Play release.
 
 ### Still not certified as 1:1
 - Crystal Drop, Wind Gate, Moon Glow and Sun Peak retain their older masks for now.
