@@ -276,9 +276,8 @@ class RebuildWorlds {
             };
             for(int[] point:protectedPixels){
                 int x=point[0],y=point[1];
-                if(output.getRGB(x,y)!=0xff000000
-                    && (output.getRGB(x,y)&0x00ffffff)
-                        !=(original.getRGB(x,y)&0x00ffffff)){
+                if((output.getRGB(x,y)&0x00ffffff)
+                    !=(original.getRGB(x,y)&0x00ffffff)){
                     throw new IOException(
                         "Cloud Pass illustrated island/waterfall erased at "
                         +x+","+y+": source="+Integer.toHexString(original.getRGB(x,y))
