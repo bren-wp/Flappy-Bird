@@ -13,6 +13,13 @@ import java.nio.file.*;
  * Requires JDK 17 only: no internet, generated chat images or other assets.
  */
 class RebuildWorlds {
+    private record CoinCircle(double centerX,double centerY,double radius) {
+        double alpha(double x,double y,double feather) {
+            // Feather inside an expanded circle, not across the coin outline:
+            // the full original 30px-radius dark ring is always replaced.
+            return clamp(.5+(radius-Math.hypot(x-centerX,y-centerY))/feather);
+        }
+    }
     private record Area(double x1,double y1,double x2,double y2) {
         double alpha(double x,double y,double feather) {
             double inside=Math.min(Math.min(x-x1,x2-x),Math.min(y-y1,y2-y));
@@ -41,6 +48,9 @@ class RebuildWorlds {
        new Area(104,493,378,700),new Area(-20,553,172,699),
        new Area(337,668,550,1280)},
       {new Area(0,0,706,185),new Area(279,154,541,599),
+       // Cloud Pass's fixed top obstacle also has a horizontal pale plume
+       // projecting left; preserve actual islands above and below the plume.
+       new Area(244,502,319,589),
        new Area(88,580,316,751),new Area(-20,636,135,752),
        new Area(276,772,542,1280)},
       {new Area(0,0,706,207),new Area(234,110,584,533),new Area(-20,421,612,773),new Area(223,703,591,1280)},
@@ -49,14 +59,16 @@ class RebuildWorlds {
       {new Area(0,0,706,210),new Area(277,106,574,534),new Area(-20,418,618,774),new Area(251,700,586,1280)}
     };
     private static final Area[][] COINS = {
-      {},
-      // Remove the three baked-in collectible coins individually without
-      // wiping out the intervening real island and cloud illustrations.
-      {new Area(472,587,526,654),new Area(420,650,477,712),
-       new Area(365,705,415,765)},
-      {},
+      {}, {}, {},
       {new Area(393,553,689,721)},
       {new Area(339,560,694,751)}, {}
+    };
+    // Original three Cloud Pass coin outlines: from actual source art at
+    // 864x1536 then mapped to the verified 706x1254 build texture.
+    private static final CoinCircle[] CLOUD_PASS_COINS={
+        new CoinCircle(498.5,622.0,43.0),
+        new CoinCircle(443.8,678.7,43.0),
+        new CoinCircle(390.0,733.4,43.0)
     };
     private static int mix(int a,int b,double t){return (int)Math.round(a+(b-a)*t);}
     private static Color cloudColor(int world,boolean shadow) {
@@ -150,7 +162,9 @@ class RebuildWorlds {
             int feather=world<=2?18:92;
             for(Area a:MASKS[world-1]) amount=Math.max(amount,a.alpha(x,y,feather));
             for(Area a:COINS[world-1])
-                amount=Math.max(amount,a.alpha(x,y,world==2?17:68));
+                amount=Math.max(amount,a.alpha(x,y,68));
+            if(world==2)for(CoinCircle c:CLOUD_PASS_COINS)
+                amount=Math.max(amount,c.alpha(x,y,17));
             // The retention gate is deliberately in the gameplay strip,
             // excluding the source screenshot's static top HUD and bottom UI.
             if(world<=2 && x%4==0 && y%4==0 && y>=210 && y<1100){
