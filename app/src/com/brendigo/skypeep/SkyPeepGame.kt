@@ -822,12 +822,14 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
 
     private fun drawSkins() {
         if(coins!=1250) {
-            badge("wood",120f,H-103f,164f,65f)
-            fitted(coins.toString(),H-56f,fontSmall,1.8f,153f,199f)
+            badge("wallet",120f,H-103f,164f,65f)
+            fitted(SkyPeepHudNumbers.compact(coins),H-35f,fontSmall,1.28f,153f,199f)
         }
         if(gems!=89) {
-            badge("wood",733f,H-103f,111f,65f)
-            fitted(gems.toString(),H-56f,fontSmall,1.8f,104f,788f)
+            // Cover the source mockup's "89" with the correct brown wallet
+            // face. Smaller type and a higher baseline keep live digits INSIDE.
+            badge("wallet",733f,H-103f,111f,65f)
+            fitted(SkyPeepHudNumbers.compact(gems),H-35f,fontSmall,1.28f,104f,788f)
         }
         if (selectedSkin!=0) {
             badge("cream",341f,H-821f,282f,68f)
@@ -949,6 +951,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
             "green" to Color.valueOf("48C62D"),
             "cream" to Color.valueOf("F6E4C4"),
             "wood" to Color.valueOf("92552F"),
+            "wallet" to Color.valueOf("573729"),
             "blue" to Color.valueOf("169CE8"),
             "red" to Color.valueOf("C83A40")
         )
