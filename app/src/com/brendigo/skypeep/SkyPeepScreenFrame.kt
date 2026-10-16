@@ -19,6 +19,11 @@ internal object SkyPeepScreenFrame {
         val extraX: Float, val extraY: Float
     )
 
+    // Spawn outside the ACTUAL full-screen viewport, not just the legacy
+    // 941px photo. Otherwise new pillars pop into view on wider tablets.
+    fun pillarSpawnX(frame: Frame): Float = frame.right + 80f
+    fun pillarDespawnX(frame: Frame): Float = frame.left - 400f
+
     fun forPixels(screenWidth: Int, screenHeight: Int): Frame {
         require(screenWidth > 0 && screenHeight > 0)
         val ratio = screenWidth.toFloat() / screenHeight
