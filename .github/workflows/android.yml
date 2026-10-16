@@ -146,7 +146,7 @@ jobs:
   release:
     name: Publish verified preview
     needs: [android, emulator-smoke]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/feat/skypeep-v0.3.9-background-motion'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/fix/skypeep-v0.3.10-hud-and-scenery'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -168,7 +168,7 @@ jobs:
             echo "Skipping stale preview at $GITHUB_SHA; branch head is $current_head"
             exit 0
           fi
-          VERSION="v0.3.9-preview.${GITHUB_RUN_NUMBER}"
+          VERSION="v0.3.10-preview.${GITHUB_RUN_NUMBER}"
           APK="$(find release-artifacts -type f -name 'app-debug.apk' -print -quit)"
           AAB="$(find release-artifacts -type f -name 'app-release.aab' -print -quit)"
           test -s "$APK" && test -s "$AAB"
@@ -179,7 +179,7 @@ jobs:
             --target "$GITHUB_SHA" \
             --title "SkyPeep $VERSION" \
             --draft --prerelease \
-            --notes '0.3.9: illustrated world background drift with easing, pause-safe motion clock, pure Kotlin crop regression tests and real Android emulator movement screenshots. Unit tests, Android build and emulator smoke verified. APK is a debug install; AAB remains UNSIGNED and not Play-ready. Full 1:1 artwork parity and physical device verification remain outstanding.'
+            --notes '0.3.10: replace dark winged score plates with bright world-coloured cloud faces and themed dynamic score ink, soften rebuilt sky seams, restore more natural distant hills, and verify score-face luminance during asset builds. Android unit, build and emulator QA must pass. Debug APK installable; AAB UNSIGNED and not Play-ready. Full 1:1 parity and physical devices remain outstanding.'
           # A stale draft is never published; delete it and its temporary tag.
           publish_head="$(gh api "repos/$GH_REPO/git/ref/heads/$GITHUB_REF_NAME" --jq '.object.sha')"
           if [[ "$publish_head" != "$GITHUB_SHA" ]]; then
