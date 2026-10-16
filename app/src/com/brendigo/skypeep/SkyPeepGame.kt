@@ -717,17 +717,27 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
 
     private fun drawWingedScore() {
         val text=score.coerceAtLeast(0).toString()
+        // The score is part of the bright illustrated winged HUD, not a
+        // separate dark overlay. Keep the large reference-style outlined
+        // numerals centred and automatically fit three-plus digit results.
         val baseline=H-65f
-        val size=1.10f
-        val available=156f
+        val size=1.30f
+        val available=171f
         val center=W/2f
-        val outline=Color.valueOf("10264B")
-        for (dx in floatArrayOf(-2.5f,0f,2.5f))
-            for (dy in floatArrayOf(-2.5f,0f,2.5f))
+        val outline=Color.valueOf(if(level==6) "603217" else "10264B")
+        val ink=Color.valueOf(when(level) {
+            1 -> "159DE8"
+            2 -> "164F9C"
+            3 -> "FFE45C"
+            4 -> "2584BE"
+            5 -> "A9C1FF"
+            else -> "FFBE31"
+        })
+        for (dx in floatArrayOf(-2.8f,0f,2.8f))
+            for (dy in floatArrayOf(-2.8f,0f,2.8f))
                 if (dx!=0f || dy!=0f)
                     fitted(text,baseline+dy,fontLarge,size,available,center+dx,outline)
-        fitted(text,baseline,fontLarge,size,available,center,
-            if(level==3)Color.valueOf("FFE45C") else Color.WHITE)
+        fitted(text,baseline,fontLarge,size,available,center,ink)
     }
 
     private fun drawCoin(x:Float,y:Float,r:Float) {
