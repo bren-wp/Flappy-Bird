@@ -337,5 +337,36 @@ grep -q 'speed=352' <<< "$physics" || {
   echo "FAIL: Tempest obstacle speed was not applied"; exit 1;
 }
 echo "PASS: difficulty persists and live Tempest Wind Gate physics runs."
+# Responsive QA uses the *actual* Android emulator display and LibGDX
+# projection, not simulated screenshot resizing. The original touch canvas
+# stays centered while original illustrated edge pixels fill wider/taller
+# screens. Capture both menu + gameplay and verify viewport logs in logcat.
+baseline_size="$size"
+for dimensions in 1080x2400 720x1280 1200x1920; do
+  adb shell wm size "$dimensions"
+  w="${dimensions%x*}"
+  h="${dimensions#*x}"
+  adb shell am force-stop com.brendigo.skypeep
+  adb logcat -c
+  adb shell am start -W -n com.brendigo.skypeep/.MainActivity
+  sleep 5
+  adb logcat -d -s SkyPeepViewport:I '*:S' | grep -q "device=$dimensions" || {
+    echo "FAIL: LibGDX viewport did not configure $dimensions"; exit 1;
+  }
+  tap_ui 470 1300
+  capture "responsive-menu-$dimensions" MENU
+  # The original PLAY button must have the same physical/touch mapping.
+  tap_ui 465 985
+  capture "responsive-gameplay-$dimensions" PLAY
+  # Pause stays attached to the physical screen's top-right corner.
+  # The pause badge is anchored to the physical screen top in this build.
+  adb shell input tap "$((w*93/100))" "$((h*5/100))"
+  capture "responsive-pause-$dimensions" PAUSE
+  echo "PASS: $dimensions fills display; original menu/gameplay/pause controls work."
+done
+adb shell wm size "$baseline_size"
+w="${baseline_size%x*}"
+h="${baseline_size#*x}"
+
 
 echo "PASS: Android app process survives boot and splash navigation."
