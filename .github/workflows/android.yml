@@ -31,6 +31,29 @@ jobs:
           if grep -Eq 'android.permission.(INTERNET|ACCESS_FINE_LOCATION|ACCESS_COARSE_LOCATION|READ_CONTACTS|READ_SMS)' app/AndroidManifest.xml; then
             echo "Unexpected sensitive Android permission"; exit 1
           fi
+      - name: Validate effective merged Android permissions (debug and release)
+        run: |
+          # Dependencies and build-variant manifests can introduce permissions
+          # that do not exist in the project's source AndroidManifest.xml.
+          set -euo pipefail
+          root="app/build/intermediates/merged_manifests"
+          test -d "$root" || { echo "FAIL: merged manifests not generated"; exit 1; }
+          for variant in debug release; do
+            merged="$(find "$root" -type f -path "*/$variant/*" -name AndroidManifest.xml -print -quit)"
+            test -s "$merged" || { echo "FAIL: missing merged $variant manifest"; exit 1; }
+            grep -q 'android:allowBackup="false"' "$merged" || {
+              echo "FAIL: backups enabled in merged $variant manifest"; exit 1;
+            }
+            grep -q 'android:usesCleartextTraffic="false"' "$merged" || {
+              echo "FAIL: cleartext enabled in merged $variant manifest"; exit 1;
+            }
+            if grep -Eq 'android.permission.(INTERNET|ACCESS_NETWORK_STATE|ACCESS_FINE_LOCATION|ACCESS_COARSE_LOCATION|ACCESS_BACKGROUND_LOCATION|READ_CONTACTS|READ_SMS|RECORD_AUDIO|CAMERA|READ_EXTERNAL_STORAGE|WRITE_EXTERNAL_STORAGE)' "$merged"; then
+              echo "FAIL: forbidden permission in merged $variant manifest"
+              grep -E 'android.permission.' "$merged" || true
+              exit 1
+            fi
+            echo "PASS: $variant merged manifest remains offline and local-only"
+          done
       - name: Verify build outputs
         run: |
           test -s app/build/outputs/apk/debug/app-debug.apk

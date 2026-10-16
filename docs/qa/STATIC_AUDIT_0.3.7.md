@@ -14,7 +14,7 @@ pixel-exact matching to the design references.
 | `elapsed` timer written/reset but never read | Dead code | Deleted |
 | Sharing chooser launched after destroyed Activity or without handler | Stability | Guard lifecycle and catch `ActivityNotFoundException` |
 | Workflow-wide `contents: write` permissions | CI security | Read-only build/emulator jobs; isolated write-enabled release job only on successful trusted branch push |
-| No automated manifest permission regression gate | Privacy | Added Android manifest checks for no network/location/contacts/SMS permission; backup and cleartext disabled |
+| No automated manifest permission regression gate | Privacy | Verify source **and effective merged debug/release manifests**; reject network/location/contacts/SMS permissions and backup/cleartext regressions introduced by any dependency |
 
 ## Reviewed, retained deliberately
 
