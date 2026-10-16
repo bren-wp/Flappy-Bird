@@ -70,10 +70,10 @@ class RebuildWorlds {
        // A narrow overlapping plume is part of the fixed photograph.
        new Oval(273,539,77,54),
        new Oval(207,670,137,103),new Oval(51,685,113,58),
-       // Cloud Pass also has a photographed horizontal pale tail immediately
-       // above the fixed bottom pillar. Erase its full left extension without
-       // introducing a rectangle-shaped edge through the midground islands.
-       new Oval(127,764,218,52),
+       // Preserve the real left floating island and waterfall at
+       // x=50..280, y=750..830. The previous broad "lower plume" oval
+       // replaced green foliage with blue sky (regression found in PR #25).
+       // The actual fixed bottom pillar remains separately covered at x>280.
        new Oval(409,839,128,80),new Area(311,851,536,1280),
        new Oval(406,956,139,88)},
       {new Area(0,0,706,207),new Area(234,110,584,533),new Area(-20,421,612,773),new Area(223,703,591,1280)},
@@ -265,6 +265,28 @@ class RebuildWorlds {
                 g=mix((from>>>8)&255,(to>>>8)&255,amount),
                 b=mix(from&255,to&255,amount);
             output.setRGB(x,y,(r<<16)|(g<<8)|b);
+        }
+        if(world==2){
+            // Reference-fidelity regression: this photographed floating island
+            // and its waterfall are not game objects, so source pixels MUST
+            // remain unchanged before JPEG encoding. Earlier overly broad
+            // foliage-removal masks painted these positions flat blue.
+            final int[][] protectedPixels={
+                {75,780},{100,780},{160,783},{100,800},{245,810}
+            };
+            for(int[] point:protectedPixels){
+                int x=point[0],y=point[1];
+                if(output.getRGB(x,y)!=0xff000000
+                    && (output.getRGB(x,y)&0x00ffffff)
+                        !=(original.getRGB(x,y)&0x00ffffff)){
+                    throw new IOException(
+                        "Cloud Pass illustrated island/waterfall erased at "
+                        +x+","+y+": source="+Integer.toHexString(original.getRGB(x,y))
+                        +", actual="+Integer.toHexString(output.getRGB(x,y)));
+                }
+            }
+            System.out.println(
+                "SkyPeep world 2: original island and waterfall ROI source pixels intact");
         }
         if(world<=2){
             double fraction=preserved/(double)Math.max(1,sampled);
