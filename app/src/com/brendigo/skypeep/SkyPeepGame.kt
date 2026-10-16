@@ -632,7 +632,11 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         val stop=min(H,end)
         while(y<stop-0.5f) {
             val size=min(144f,stop-y)
-            batch.draw(tile,x,y,width,size)
+            // Crop the final repeat instead of squashing a full 144px tile.
+            // This keeps the stone grain and horizontal bands consistent at
+            // both screen edges on every aspect ratio.
+            val sourceHeight = kotlin.math.ceil(size.toDouble()).toInt().coerceIn(1, 144)
+            batch.draw(tile,x,y,width,size,0,0,128,sourceHeight,false,false)
             y+=size
         }
     }
