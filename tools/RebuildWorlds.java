@@ -316,7 +316,10 @@ class RebuildWorlds {
                 Region shape=MASKS[world-1][mask];
                 // Header replacement spans the whole width and needs a
                 // broad fade to avoid a sharp horizontal cut across clouds.
-                double feather=(world<=4)?(mask==0?72:32):92;
+                // Keep v0.3.13 masks byte-for-byte consistent for worlds 1-2.
+                // Only the newly reconstructed worlds 3-4 use 32px fades.
+                double feather=world<=2?(mask==0?72:27):
+                               world<=4?(mask==0?72:32):92;
                 amount=Math.max(amount,shape.alpha(x,y,feather));
             }
             for(Area a:COINS[world-1])
