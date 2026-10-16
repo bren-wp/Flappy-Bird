@@ -1157,16 +1157,35 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
             val pix=Pixmap(192,80,Pixmap.Format.RGBA8888)
             pix.setColor(0f,0f,0f,0f)
             pix.fill()
+            // Render the same premium illustration treatment used by
+            // reference PLAY/PAUSE buttons: thick chocolate silhouette,
+            // coloured inset bevel, broad glossy shoulder and shaded base.
+            // The border is antialiased and the patch remains 9-slice safe.
             for(y in 0 until 80) for(x in 0 until 192) {
                 val dx=max(0f,kotlin.math.abs(x-95.5f)-64.5f)
                 val dy=max(0f,kotlin.math.abs(y-39.5f)-9.5f)
                 val d=kotlin.math.sqrt(dx*dx+dy*dy)
                 if(d>30f) continue
-                val c=if(d>26f) Color(.09f,.14f,.22f,1f) else {
-                    val brightness=if(y<20) 1.12f else if(y>65) .88f else 1f
-                    Color((base.r*brightness).coerceIn(0f,1f),
-                          (base.g*brightness).coerceIn(0f,1f),
-                          (base.b*brightness).coerceIn(0f,1f),1f)
+                val edgeAlpha=((30f-d)/1.65f).coerceIn(0f,1f)
+                val vertical=y/79f
+                val c=when {
+                    d>=25f -> Color(.17f,.075f,.055f,edgeAlpha)
+                    d>=22f -> Color(.39f,.20f,.12f,edgeAlpha)
+                    d>=19f -> Color(
+                        (base.r*.66f).coerceIn(0f,1f),
+                        (base.g*.61f).coerceIn(0f,1f),
+                        (base.b*.57f).coerceIn(0f,1f),edgeAlpha)
+                    else -> {
+                        var brightness=1.19f-.29f*vertical
+                        if(y<=17) brightness+=.07f
+                        if(y>=66) brightness-=.12f
+                        if(y in 13..17 && x in 28..154)
+                            brightness+=.085f
+                        if(d>=15f) brightness-=.045f
+                        Color((base.r*brightness).coerceIn(0f,1f),
+                              (base.g*brightness).coerceIn(0f,1f),
+                              (base.b*brightness).coerceIn(0f,1f),edgeAlpha)
+                    }
                 }
                 pix.drawPixel(x,y,Color.rgba8888(c))
             }
