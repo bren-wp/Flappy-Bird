@@ -487,13 +487,21 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     }
 
     private fun clickSettings(x: Float, y: Float) {
+        if (SkyPeepUiTouch.settingsBack(x,y)) {
+            playSound("click")
+            screen=Screen.MENU
+            save()
+            return
+        }
+        // Non-interactive gutters stay silent, and the visible fourth row
+        // alone cycles the player's route license.
+        val row = SkyPeepUiTouch.settingsRowAt(x,y) ?: return
         playSound("click")
-        when {
-            SkyPeepUiTouch.settingsBack(x,y) -> { screen=Screen.MENU; save() }
-            hit(x,y,120f,555f,710f,118f) -> setMusic(!musicEnabled)
-            hit(x,y,120f,698f,710f,117f) -> { effectsEnabled=!effectsEnabled; save() }
-            hit(x,y,120f,840f,710f,120f) -> { vibrationEnabled=!vibrationEnabled; save() }
-            hit(x,y,120f,980f,710f,127f) -> {
+        when (row) {
+            0 -> setMusic(!musicEnabled)
+            1 -> { effectsEnabled=!effectsEnabled; save() }
+            2 -> { vibrationEnabled=!vibrationEnabled; save() }
+            3 -> {
                 difficulty = difficulty.next()
                 save()
                 toast("SKY ROUTE: ${difficulty.title}")
