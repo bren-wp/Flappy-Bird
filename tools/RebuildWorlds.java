@@ -280,6 +280,25 @@ class RebuildWorlds {
                 if(MASKS[0][2].alpha(x,525,27)<.99)
                     throw new IOException("Sky Start fixed-pillar rim leaked: x="+x);
         }
+        if(world==3 || world==4){
+            // Baked screenshot obstacles must be replaced by actual moving
+            // LibGDX pillar sprites. Verify the centres of their fixed
+            // silhouettes are always covered by the corresponding masks.
+            int[][] fixedObjects=world==3?
+                new int[][]{{470,419},{260,616},{477,875}}:
+                new int[][]{{455,335},{185,643},{365,990}};
+            for(int[] point:fixedObjects){
+                double opacity=0;
+                for(Region mask:MASKS[world-1])
+                    opacity=Math.max(opacity,mask.alpha(point[0],point[1],32));
+                if(opacity<.98)throw new IOException(
+                    "Photographed world-"+world+" game object was not removed at "+
+                    point[0]+","+point[1]+": "+opacity);
+            }
+            for(CoinCircle coin:photographedCoins(world))
+                if(coin.alpha(coin.centerX,coin.centerY,17)<.99)
+                    throw new IOException("A fixed reference coin remained in world "+world);
+        }
         BufferedImage air=sky(w,h,world);
         CoinCircle[] staticCoins=photographedCoins(world);
         int[][] coinSky=new int[staticCoins.length][];
