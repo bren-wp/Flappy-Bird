@@ -78,16 +78,29 @@ class CompareSkyPeepScreens {
         // The X/Y fractions are viewport-independent for portrait screens.
         for (int world=1;world<=6;world++) {
             BufferedImage screenshot=load(Path.of("smoke-results","world-"+world+".png"));
-            int x=(int)(screenshot.getWidth()*.445);
-            int y=(int)(screenshot.getHeight()*.056);
-            int rgb=screenshot.getRGB(x,y);
-            int luminance=(((rgb>>>16)&255)*299
-                +((rgb>>>8)&255)*587+(rgb&255)*114)/1000;
+            // Probe the left, lower interior of the rendered score face.
+            // The original white cloud crowns live higher up, while the
+            // dynamic numeral is centered horizontally. These four samples
+            // test the actual background without intersecting either.
+            int minimum=255, total=0, count=0;
+            for(double fx:new double[]{.445,.453})
+                for(double fy:new double[]{.065,.066}) {
+                    int x=(int)(screenshot.getWidth()*fx);
+                    int y=(int)(screenshot.getHeight()*fy);
+                    int rgb=screenshot.getRGB(x,y);
+                    int luminance=(((rgb>>>16)&255)*299
+                        +((rgb>>>8)&255)*587+(rgb&255)*114)/1000;
+                    minimum=Math.min(minimum,luminance);
+                    total+=luminance;
+                    count++;
+                }
+            int average=total/count;
             report.append("world-").append(world).append(
-                " | winged score face luminance=").append(luminance).append("/255\\n");
-            if (luminance<180)throw new IOException(
-                "Dark gameplay score slab in world "+world+
-                " (luminance="+luminance+"). Verify emulator screenshot.");
+                " | score-face base minimum=").append(minimum)
+                .append("/255 average=").append(average).append("/255\n");
+            if(minimum<180 || average<195)throw new IOException(
+                "Dark score-face base in world "+world+
+                " (minimum="+minimum+", average="+average+"). Check screenshot.");
         }
         Files.writeString(output, report.toString(), StandardCharsets.UTF_8);
         System.out.print(report);
