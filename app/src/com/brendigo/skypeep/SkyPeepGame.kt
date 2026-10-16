@@ -589,7 +589,15 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     }
 
     private fun drawGameplay() {
-        image("bg_$level",0f,0f,W,H)
+        // Keep the illustrated composition edge-to-edge while introducing
+        // subtle depth. No wrap seam, external image, or gameplay collision shift.
+        pictures["bg_$level"]?.let { background ->
+            val crop = SkyPeepBackgroundMotion.crop(
+                background.width, animationTime, !readyForFirstTap
+            )
+            batch.draw(background,0f,0f,W,H,
+                crop.sourceX,0,crop.sourceWidth,background.height,false,false)
+        }
         val gap = FlightRules.gap(level)
         for (gate in gates) {
             val top = pictures["pillar_${level}_top"]!!
