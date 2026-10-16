@@ -148,8 +148,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         // QA may select a different license but never opens locked worlds in release APKs.
         if (qaDifficulty in SkyDifficulty.entries.indices)
             difficulty = SkyDifficulty.fromStored(qaDifficulty)
-        if (qaDifficulty >= 0)
-            Gdx.app.log("SkyPeepDifficulty", "loaded=${difficulty.title}")
+        Gdx.app.log("SkyPeepDifficulty", "loaded=${difficulty.title}")
         ownedTrails[0] = true
         for (i in 1..3) ownedTrails[i] = prefs.getBoolean("trail_owned_$i",false)
         selectedTrail = prefs.getInteger("trail_selected",0).coerceIn(0,3)
