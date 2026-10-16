@@ -25,7 +25,6 @@ import com.badlogic.gdx.utils.viewport.FitViewport
 import java.util.Locale
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.sqrt
 
 /** All locations refer to the original 941x1672 portrait artwork. No scrolling. */
 class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
@@ -195,8 +194,10 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
             // never be shown as completed before its first successful flight.
             unlocked = qaMapUnlocked
             level = qaMapUnlocked
-            for (i in 0 until MAX_LEVEL)
+            for (i in 0 until MAX_LEVEL) {
                 stars[i] = if (i < unlocked - 1) 3 else 0
+                routeStars[difficulty.ordinal][i] = stars[i]
+            }
             screen = Screen.MAP
             Gdx.app.log("SkyPeepMap","map_loaded unlocked=$unlocked selected=$level")
         }
@@ -824,6 +825,9 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     }
 
     private fun drawMapProgress() {
+        // A compact route tag fills the existing gap between BACK and PLAY;
+        // the six island illustrations and their layout remain untouched.
+        fitted("${difficulty.title} ROUTE",92f,fontSmall,.78f,295f,365f)
         // Locked icons in the original supplied map stay intact. Open and
         // completed islands use different statuses and earned real stars.
         for(world in 1..MAX_LEVEL) {
@@ -1050,7 +1054,6 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     private fun prepareChrome() {
         val palette=mapOf(
             "dark" to Color.valueOf("103963"),
-            "score" to Color.valueOf("1B8FDC"),
             "green" to Color.valueOf("48C62D"),
             "cream" to Color.valueOf("F6E4C4"),
             "wood" to Color.valueOf("92552F"),
