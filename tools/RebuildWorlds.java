@@ -13,6 +13,15 @@ import java.nio.file.*;
  * Requires JDK 17 only: no internet, generated chat images or other assets.
  */
 class RebuildWorlds {
+    /** Soft organic removal shape for a baked bird, cloud or pillar cap. */
+    private interface Region { double alpha(double x,double y,double feather); }
+    private record Oval(double cx,double cy,double rx,double ry) implements Region {
+        public double alpha(double x,double y,double feather) {
+            double nx=(x-cx)/rx,ny=(y-cy)/ry;
+            double signedDistance=(1.0-Math.hypot(nx,ny))*Math.min(rx,ry);
+            return clamp(.5+signedDistance/feather);
+        }
+    }
     private record CoinCircle(double centerX,double centerY,double radius) {
         double alpha(double x,double y,double feather) {
             // Feather inside an expanded circle, not across the coin outline:
@@ -20,7 +29,7 @@ class RebuildWorlds {
             return clamp(.5+(radius-Math.hypot(x-centerX,y-centerY))/feather);
         }
     }
-    private record Area(double x1,double y1,double x2,double y2) {
+    private record Area(double x1,double y1,double x2,double y2) implements Region {
         double alpha(double x,double y,double feather) {
             double inside=Math.min(Math.min(x-x1,x2-x),Math.min(y-y1,y2-y));
             if(x>=x1&&x<=x2&&y>=y1&&y<=y2) return clamp(.5+inside/feather);
@@ -39,20 +48,27 @@ class RebuildWorlds {
       {{255,157,98},{255,198,91},{255,221,115},{255,238,186}}
     };
     // 706 x 1254 world assets, with original artwork coordinates.
-    private static final Area[][] MASKS = {
+    private static final Region[][] MASKS = {
       // World 1-2: mask ONLY the photographed HUD, baked-in character,
       // motion streaks and fixed stone pillars. The older huge rectangles
       // erased real illustrated islands, mountains and clouds at mid-screen.
       // These source-pixel-space regions retain far more original scenery.
-      {new Area(0,0,706,185),new Area(335,92,538,530),
-       new Area(104,493,378,700),new Area(-20,553,172,699),
-       new Area(337,668,550,1280)},
-      {new Area(0,0,706,185),new Area(279,154,541,599),
-       // Cloud Pass's fixed top obstacle also has a horizontal pale plume
-       // projecting left; preserve actual islands above and below the plume.
-       new Area(244,502,319,589),
-       new Area(88,580,316,751),new Area(-20,636,135,752),
-       new Area(276,772,542,1280)},
+      {new Area(0,0,706,185),
+       // Original top stone shaft with a separate irregular leafy lower cap.
+       new Area(346,116,534,451),new Oval(439,466,106,69),
+       // Original bird/scarf and speed streaks: erase elliptical silhouettes,
+       // retaining nearby natural island and mountain pixels.
+       new Oval(235,585,158,120),new Oval(60,629,137,70),
+       // The bottom post reaches the screen edge; soft rounded top avoids
+       // the former horizontal horizon-size rectangle seam.
+       new Oval(437,754,110,88),new Area(346,775,534,1280)},
+      {new Area(0,0,706,185),
+       new Area(309,147,532,448),new Oval(410,489,150,106),
+       // A narrow overlapping plume is part of the fixed photograph.
+       new Oval(273,539,77,54),
+       new Oval(207,670,137,103),new Oval(51,685,113,58),
+       new Oval(409,839,128,80),new Area(311,851,536,1280),
+       new Oval(406,956,139,88)},
       {new Area(0,0,706,207),new Area(234,110,584,533),new Area(-20,421,612,773),new Area(223,703,591,1280)},
       {new Area(0,0,706,216),new Area(194,105,651,533),new Area(-20,424,687,771),new Area(223,697,590,1280),new Area(594,642,746,1100)},
       {new Area(0,0,706,207),new Area(233,103,580,528),new Area(-20,418,618,774),new Area(219,695,591,1280)},
@@ -159,8 +175,13 @@ class RebuildWorlds {
             // An 18px feather removes visible rectangular mask edges without
             // bleeding 90+ pixels into valuable original illustrated scenery.
             // Worlds 3-6 retain their proven legacy mask/feather geometry here.
-            int feather=world<=2?18:92;
-            for(Area a:MASKS[world-1]) amount=Math.max(amount,a.alpha(x,y,feather));
+            for(int mask=0;mask<MASKS[world-1].length;mask++){
+                Region shape=MASKS[world-1][mask];
+                // Header replacement spans the whole width and needs a
+                // broad fade to avoid a sharp horizontal cut across clouds.
+                double feather=(world<=2)?(mask==0?72:27):92;
+                amount=Math.max(amount,shape.alpha(x,y,feather));
+            }
             for(Area a:COINS[world-1])
                 amount=Math.max(amount,a.alpha(x,y,68));
             if(world==2)for(CoinCircle c:CLOUD_PASS_COINS)
