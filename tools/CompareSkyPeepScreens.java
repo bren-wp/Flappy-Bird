@@ -72,6 +72,23 @@ class CompareSkyPeepScreens {
                 scene[0], error, screenshot.getWidth(), screenshot.getHeight(),
                 reference.getWidth(), reference.getHeight()));
         }
+        // Real Android screenshot guard, not just a generated-asset check.
+        // Sample an unobstructed interior point on the winged score face; it
+        // must remain pale in each of the six individually themed worlds.
+        // The X/Y fractions are viewport-independent for portrait screens.
+        for (int world=1;world<=6;world++) {
+            BufferedImage screenshot=load(Path.of("smoke-results","world-"+world+".png"));
+            int x=(int)(screenshot.getWidth()*.445);
+            int y=(int)(screenshot.getHeight()*.056);
+            int rgb=screenshot.getRGB(x,y);
+            int luminance=(((rgb>>>16)&255)*299
+                +((rgb>>>8)&255)*587+(rgb&255)*114)/1000;
+            report.append("world-").append(world).append(
+                " | winged score face luminance=").append(luminance).append("/255\\n");
+            if (luminance<180)throw new IOException(
+                "Dark gameplay score slab in world "+world+
+                " (luminance="+luminance+"). Verify emulator screenshot.");
+        }
         Files.writeString(output, report.toString(), StandardCharsets.UTF_8);
         System.out.print(report);
     }
