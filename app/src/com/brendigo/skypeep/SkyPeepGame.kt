@@ -412,7 +412,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
             }
             SkyPeepResultTouch.Action.SHARE -> {
                 playSound("click")
-                val msg = "SkyPeep | ${levelTitle(level)} | Score $score | Best $best"
+                val msg = "SkyPeep | ${levelTitle(level)} | ${difficulty.title} | Score $score | Best ${routeBests[difficulty.ordinal]}"
                 if (shareText != null) shareText.invoke(msg)
                 else Gdx.app.clipboard.contents = msg
                 toast("SHARE RESULT")
@@ -894,7 +894,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         fitted("SCORE",826f,fontSmall,1.30f,275f,294f)
         fitted("BEST",826f,fontSmall,1.30f,275f,648f)
         fitted(score.toString(),781f,fontLarge,1.12f,272f,294f)
-        fitted(best.toString(),781f,fontLarge,1.12f,272f,648f)
+        fitted(routeBests[difficulty.ordinal].toString(),781f,fontLarge,1.12f,272f,648f)
         badge("wood",137f,508f,666f,156f)
         fitted("COINS EARNED",643f,fontSmall,1.45f,608f)
         fitted("+$earnedCoins",586f,fontLarge,1.1f,608f)
@@ -919,7 +919,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         badge("cream",402f,H-947f,160f,90f)
         badge("cream",665f,H-947f,122f,90f)
         fitted(score.toString(),H-874f,fontLarge,1f,142f,277f,Color.valueOf("673A22"))
-        fitted(best.toString(),H-874f,fontLarge,1f,148f,483f,Color.valueOf("673A22"))
+        fitted(routeBests[difficulty.ordinal].toString(),H-874f,fontLarge,1f,148f,483f,Color.valueOf("673A22"))
         fitted(earnedCoins.toString(),H-874f,fontLarge,1f,112f,726f,Color.valueOf("673A22"))
         val progress = min(1f,score.toFloat()/targetScore())
         badge("dark",293f,H-1100f,463f,57f)
