@@ -49,7 +49,7 @@ class RebuildWorlds {
     private static Color cloudColor(int world,boolean shadow) {
         if(world==5) return shadow?new Color(70,82,179,42):new Color(185,199,255,68);
         if(world==6) return shadow?new Color(255,216,158,55):new Color(255,255,227,85);
-        return shadow?new Color(129,209,243,43):new Color(255,255,255,91);
+        return shadow?new Color(129,209,243,36):new Color(255,255,255,132);
     }
     private static void cloud(Graphics2D g,int world,int cx,int cy,double scale) {
         // Union the lobes into one silhouette BEFORE applying transparency.
@@ -79,22 +79,24 @@ class RebuildWorlds {
             :sunset?new int[][]{{239,148,102,43},{227,131,96,52}}
             :new int[][]{{77,160,224,43},{62,137,203,54}};
         for(int layer=0;layer<2;layer++){
-            int horizon=(int)(height*(layer==0?.71:.80));
+            // A few broad, irregular distant hills instead of repeated sharp
+            // triangles (which looked like tall geometric artifacts in game).
+            int horizon=(int)(height*(layer==0?.75:.85));
             double shift=world*24+layer*41;
             Path2D.Double line=new Path2D.Double();
-            line.moveTo(-12,height);
-            line.lineTo(-12,horizon+80);
-            for(int x=-12;x<width+75;x+=68){
-                double h=53+Math.abs(Math.sin(x*.014+shift*.1))*76;
-                if(night)h*=.85;
-                if(sunset)h*=1.20;
-                line.lineTo(x+24,horizon-h);
-                line.lineTo(x+69,horizon+9);
+            line.moveTo(-24,height);
+            line.lineTo(-24,horizon+32);
+            for(int x=-24;x<width+135;x+=105){
+                double peak=32+Math.abs(Math.sin(x*.010+shift*.1))*47;
+                if(night)peak*=.85;
+                if(sunset)peak*=1.16;
+                line.quadTo(x+29,horizon-peak*.72,x+52,horizon-peak);
+                line.quadTo(x+82,horizon-peak*.66,x+105,horizon+16);
             }
-            line.lineTo(width+12,height);
+            line.lineTo(width+130,height);
             line.closePath();
             int[] col=shades[layer];
-            g.setColor(new Color(col[0],col[1],col[2],col[3]));
+            g.setColor(new Color(col[0],col[1],col[2],Math.max(20,col[3]-12)));
             g.fill(line);
         }
     }
@@ -128,8 +130,8 @@ class RebuildWorlds {
         BufferedImage output=new BufferedImage(w,h,BufferedImage.TYPE_INT_RGB);
         for(int y=0;y<h;y++)for(int x=0;x<w;x++){
             double amount=0;
-            for(Area a:MASKS[world-1]) amount=Math.max(amount,a.alpha(x,y,47));
-            for(Area a:COINS[world-1]) amount=Math.max(amount,a.alpha(x,y,28));
+            for(Area a:MASKS[world-1]) amount=Math.max(amount,a.alpha(x,y,92));
+            for(Area a:COINS[world-1]) amount=Math.max(amount,a.alpha(x,y,68));
             int from=original.getRGB(x,y),to=air.getRGB(x,y);
             int r=mix((from>>>16)&255,(to>>>16)&255,amount),
                 g=mix((from>>>8)&255,(to>>>8)&255,amount),
