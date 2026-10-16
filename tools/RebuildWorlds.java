@@ -301,6 +301,13 @@ class RebuildWorlds {
         g.setStroke(new BasicStroke(1.8f,BasicStroke.CAP_ROUND,BasicStroke.JOIN_ROUND));
         g.draw(new Arc2D.Float(x+11,y+8,w-22,52,192,155,Arc2D.OPEN));
         g.dispose();
+        // Regression guard: illustrated score badges must be cloud-light in
+        // every world, never a dark rectangle behind the number.
+        int faceRgb=cleaned.getRGB(x+w/2,y+h/2);
+        int luminance=(((faceRgb>>>16)&255)*299
+            +((faceRgb>>>8)&255)*587+(faceRgb&255)*114)/1000;
+        if(luminance<185)throw new IOException(
+            "Score face too dark in world "+world+": luminance="+luminance);
         // Safety invariant: changing any part of the original wings, ribbon,
         // level-name art or transparent crop OUTSIDE this inset fails the build.
         for(int yy=0;yy<210;yy++)for(int xx=0;xx<367;xx++)
