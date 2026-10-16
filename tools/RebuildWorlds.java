@@ -55,7 +55,7 @@ class RebuildWorlds {
       // These source-pixel-space regions retain far more original scenery.
       {new Area(0,0,706,185),
        // Original top stone shaft with a separate irregular leafy lower cap.
-       new Area(346,116,534,451),new Oval(439,466,106,69),
+       new Area(346,116,534,451),new Oval(439,468,119,92),
        // Original bird/scarf and speed streaks: erase elliptical silhouettes,
        // retaining nearby natural island and mountain pixels.
        new Oval(235,585,158,120),new Oval(60,629,137,70),
