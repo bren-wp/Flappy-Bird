@@ -69,11 +69,14 @@ class RebuildWorlds {
        new Area(309,147,532,448),new Oval(410,489,150,106),
        // A narrow overlapping plume is part of the fixed photograph.
        new Oval(273,539,77,54),
-       new Oval(207,670,137,103),new Oval(51,685,113,58),
-       // Cloud Pass also has a photographed horizontal pale tail immediately
-       // above the fixed bottom pillar. Erase its full left extension without
-       // introducing a rectangle-shaped edge through the midground islands.
-       new Oval(127,764,218,52),
+       // The photographed bird ends above the central cloud banks.
+       // A taller old bird mask also erased genuine bright cloud pixels near
+       // (280,750). Keep the live sprite separate while preserving clouds.
+       new Oval(207,644,141,100),new Oval(51,685,113,58),
+       // Preserve the original floating island, waterfall, cloud crowns and
+       // stone bridge at x=50..320,y=750..830. A previous broad lower-plume
+       // oval wrongly erased these real pixels. The photographed gold bottom
+       // pillar begins at x≈337,y≈790 and has its own separate removal mask.
        new Oval(409,839,128,80),new Area(311,851,536,1280),
        new Oval(406,956,139,88)},
       {new Area(0,0,706,207),new Area(234,110,584,533),new Area(-20,421,612,773),new Area(223,703,591,1280)},
@@ -217,6 +220,20 @@ class RebuildWorlds {
         if(original==null)throw new IOException("Unreadable SkyPeep artwork: "+file);
         int w=original.getWidth(),h=original.getHeight();
         if(w!=706||h!=1254)throw new IOException("Unexpected art size: "+w+"x"+h);
+        if(world==2){
+            // The bottom-pillar cap has its own stable mask, independent of
+            // the removed broad plume oval. Assert its geometry, not an
+            // assumed input-pixel colour: packed source artwork and a
+            // resized reference screenshot do not have identical RGBs.
+            // (x=400,y=830) is well inside the cap mask; near its left edge
+            // the historic cap-overlap region must also remain covered.
+            for(int[] point:new int[][]{{400,830},{345,810}}){
+                if(MASKS[1][6].alpha(point[0],point[1],27)<.99)
+                    throw new IOException(
+                        "Cloud Pass separate pillar-cap mask no longer covers "
+                        +point[0]+","+point[1]);
+            }
+        }
         if(world==1){
             // The outer dark bottom rim of the original baked-in pillar spans
             // x≈350..535 around source y=525. Erase it completely so it
@@ -231,6 +248,7 @@ class RebuildWorlds {
             coinSky[i]=coinSkyColours(original,CLOUD_PASS_COINS[i]);
         BufferedImage output=new BufferedImage(w,h,BufferedImage.TYPE_INT_RGB);
         int preserved=0, sampled=0;
+        int originalIslandPixels=0, islandSamples=0;
         for(int y=0;y<h;y++)for(int x=0;x<w;x++){
             double amount=0;
             // An 18px feather removes visible rectangular mask edges without
@@ -258,6 +276,11 @@ class RebuildWorlds {
                 sampled++;
                 if(amount<.08) preserved++;
             }
+            if(world==2 && x>=40 && x<280 && y>=750 && y<825
+                    && x%4==0 && y%4==0){
+                islandSamples++;
+                if(amount<.02)originalIslandPixels++;
+            }
             int from=original.getRGB(x,y),to=air.getRGB(x,y);
             if(coveredCoin>=0 && coinAlpha>0)
                 to=coinBackdrop(coinSky[coveredCoin],CLOUD_PASS_COINS[coveredCoin],y);
@@ -265,6 +288,37 @@ class RebuildWorlds {
                 g=mix((from>>>8)&255,(to>>>8)&255,amount),
                 b=mix(from&255,to&255,amount);
             output.setRGB(x,y,(r<<16)|(g<<8)|b);
+        }
+        if(world==2){
+            // Pixel-integrity guard for the entire illustrated island/bridge
+            // landscape, not only the five individual landmarks. The previous
+            // overwide plume oval painted nearly 100% of this ROI blue.
+            double intact=originalIslandPixels/(double)Math.max(1,islandSamples);
+            System.out.printf("SkyPeep Cloud Pass island ROI: %.1f%% source pixels untouched%n",
+                100*intact);
+            if(intact<.88)throw new IOException(
+                "Cloud Pass island/bridge artwork damaged: kept="+intact);
+            // Reference-fidelity regression: this photographed floating island
+            // and its waterfall are not game objects, so source pixels MUST
+            // remain unchanged before JPEG encoding. Earlier overly broad
+            // foliage-removal masks painted these positions flat blue.
+            final int[][] protectedPixels={
+                {75,780},{100,780},{160,783},{100,800},{245,810},
+                // Original Cloud Pass cloud crown, NOT fixed-pillar plume.
+                {280,750},{300,750}
+            };
+            for(int[] point:protectedPixels){
+                int x=point[0],y=point[1];
+                if((output.getRGB(x,y)&0x00ffffff)
+                    !=(original.getRGB(x,y)&0x00ffffff)){
+                    throw new IOException(
+                        "Cloud Pass illustrated island/waterfall erased at "
+                        +x+","+y+": source="+Integer.toHexString(original.getRGB(x,y))
+                        +", actual="+Integer.toHexString(output.getRGB(x,y)));
+                }
+            }
+            System.out.println(
+                "SkyPeep world 2: original island, waterfall and cloud ROI source pixels intact");
         }
         if(world<=2){
             double fraction=preserved/(double)Math.max(1,sampled);
