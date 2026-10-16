@@ -271,7 +271,7 @@ capture background-motion-start PLAY
 sleep 6
 capture background-motion-end PLAY
 offsets="$(adb logcat -d -s SkyPeepBackground:I '*:S' \
-  | sed -n 's/.*offset_px=\\([0-9][0-9]*\\).*/\\1/p' | sort -u | wc -l)"
+  | sed -n 's/.*offset_px=\([0-9][0-9]*\).*/\1/p' | sort -u | wc -l)"
 echo "SkyPeep active background crop offsets: $offsets distinct"
 if (( offsets < 2 )); then
   echo "FAIL: animated world background did not move during GL capture"; exit 1
