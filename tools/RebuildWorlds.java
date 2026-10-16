@@ -234,6 +234,7 @@ class RebuildWorlds {
             coinSky[i]=coinSkyColours(original,CLOUD_PASS_COINS[i]);
         BufferedImage output=new BufferedImage(w,h,BufferedImage.TYPE_INT_RGB);
         int preserved=0, sampled=0;
+        int originalIslandPixels=0, islandSamples=0;
         for(int y=0;y<h;y++)for(int x=0;x<w;x++){
             double amount=0;
             // An 18px feather removes visible rectangular mask edges without
@@ -261,6 +262,11 @@ class RebuildWorlds {
                 sampled++;
                 if(amount<.08) preserved++;
             }
+            if(world==2 && x>=40 && x<280 && y>=750 && y<825
+                    && x%4==0 && y%4==0){
+                islandSamples++;
+                if(amount<.02)originalIslandPixels++;
+            }
             int from=original.getRGB(x,y),to=air.getRGB(x,y);
             if(coveredCoin>=0 && coinAlpha>0)
                 to=coinBackdrop(coinSky[coveredCoin],CLOUD_PASS_COINS[coveredCoin],y);
@@ -270,6 +276,14 @@ class RebuildWorlds {
             output.setRGB(x,y,(r<<16)|(g<<8)|b);
         }
         if(world==2){
+            // Pixel-integrity guard for the entire illustrated island/bridge
+            // landscape, not only the five individual landmarks. The previous
+            // overwide plume oval painted nearly 100% of this ROI blue.
+            double intact=originalIslandPixels/(double)Math.max(1,islandSamples);
+            System.out.printf("SkyPeep Cloud Pass island ROI: %.1f%% source pixels untouched%n",
+                100*intact);
+            if(intact<.88)throw new IOException(
+                "Cloud Pass island/bridge artwork damaged: kept="+intact);
             // Reference-fidelity regression: this photographed floating island
             // and its waterfall are not game objects, so source pixels MUST
             // remain unchanged before JPEG encoding. Earlier overly broad
