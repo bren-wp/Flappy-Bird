@@ -13,7 +13,8 @@ The supplied design reference remains authoritative. Screens and worlds must eve
 
 - PR #25 was merged and its preview published successfully, but a subsequent review detected that Cloud Pass's **lower fixed-pillar plume oval** also replaced genuine floating-island foliage and part of the waterfall.
 - Removed the overwide oval centred at source (127,764), radius (218,52). The original illustrated foliage and waterfall remain unmodified in that section. Dynamic lower pillars still render from separate sprites and shafts.
-- Added a **pixel-exact source-retention guard before JPEG compression** for reference-scene points (75,780), (100,780), (160,783), (100,800), and (245,810) in the 706×1254 generated artwork. If a future source clean-up touches any of those unrelated island/waterfall pixels, the Android build fails.
+- Added a **pixel-exact source-retention guard before JPEG compression** for reference-scene points (75,780), (100,780), (160,783), (100,800), and (245,810) in the 706×1254 generated artwork. Two additional samples (280,750) and (300,750) protect real white cloud crowns bordering the island. If a future source clean-up touches any of these legitimate scenery pixels, the Android build fails.
+- Tightened the old photographed-bird mask in Cloud Pass from (207,670; radius 137×103) to (207,644; radius 141×100), retaining more of the original cloud bank beneath its flight path instead of painting it cyan. Original illustrated foreground pillars remain handled by separate pillar cleanup regions.
 - The mask-coverage and visual pixel-comparison metrics remain separate: more retained original pixels does **not** prove every game frame is 1:1.
 - v0.3.13 uses Android versionCode 25; the unsigned AAB is not a production Play release.
 
