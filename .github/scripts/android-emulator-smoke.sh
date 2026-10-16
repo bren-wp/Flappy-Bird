@@ -259,6 +259,28 @@ tap_ui 470 1380
 capture loss-retry PLAY
 echo "PASS: accurate result buttons and inert margins, HOME and loss RETRY."
 
+# Verify that the newly introduced background motion actually renders on
+# Android, not merely in the pure Kotlin crop tests. This debug-only fixture
+# holds the bird still so normal gravity cannot end the run during capture.
+adb logcat -c
+adb shell am force-stop com.brendigo.skypeep
+adb shell am start -W --ei sky_peep_qa_world 1 --ez sky_peep_qa_background_motion true \
+  -n com.brendigo.skypeep/.MainActivity
+sleep 3
+capture background-motion-start PLAY
+sleep 6
+capture background-motion-end PLAY
+offsets="$(adb logcat -d -s SkyPeepBackground:I '*:S' \
+  | sed -n 's/.*offset_px=\\([0-9][0-9]*\\).*/\\1/p' | sort -u | wc -l)"
+echo "SkyPeep active background crop offsets: $offsets distinct"
+if (( offsets < 2 )); then
+  echo "FAIL: animated world background did not move during GL capture"; exit 1
+fi
+# A PAUSE freezes the actual game scene, including its independent motion clock.
+tap_ui 868 65
+capture background-motion-paused PAUSE
+echo "PASS: animated background moves in active flight and PAUSE opens."
+
 # Compare actual emulator pixels with the project reference artwork.
 # This is a transparent diagnostic, not an unearned 1:1 certification.
 java -Djava.awt.headless=true tools/CompareSkyPeepScreens.java
