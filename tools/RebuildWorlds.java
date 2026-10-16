@@ -73,10 +73,10 @@ class RebuildWorlds {
        // A taller old bird mask also erased genuine bright cloud pixels near
        // (280,750). Keep the live sprite separate while preserving clouds.
        new Oval(207,644,141,100),new Oval(51,685,113,58),
-       // Preserve the real left floating island and waterfall at
-       // x=50..280, y=750..830. The previous broad "lower plume" oval
-       // replaced green foliage with blue sky (regression found in PR #25).
-       // The actual fixed bottom pillar remains separately covered at x>280.
+       // Preserve the original floating island, waterfall, cloud crowns and
+       // stone bridge at x=50..320,y=750..830. A previous broad lower-plume
+       // oval wrongly erased these real pixels. The photographed gold bottom
+       // pillar begins at x≈337,y≈790 and has its own separate removal mask.
        new Oval(409,839,128,80),new Area(311,851,536,1280),
        new Oval(406,956,139,88)},
       {new Area(0,0,706,207),new Area(234,110,584,533),new Area(-20,421,612,773),new Area(223,703,591,1280)},
@@ -220,6 +220,21 @@ class RebuildWorlds {
         if(original==null)throw new IOException("Unreadable SkyPeep artwork: "+file);
         int w=original.getWidth(),h=original.getHeight();
         if(w!=706||h!=1254)throw new IOException("Unexpected art size: "+w+"x"+h);
+        if(world==2){
+            // These two source pixels are the actual baked gold LOWER PILLAR
+            // on the right side of the photo, not white clouds/green island.
+            // Keep them fully removed while protecting the real landscape.
+            for(int y:new int[]{805,810}){
+                int src=original.getRGB(345,y);
+                int red=(src>>>16)&255,green=(src>>>8)&255,blue=src&255;
+                if(red<blue+55 || green<blue+35)
+                    throw new IOException(
+                        "Cloud Pass gold-pillar cap source moved: 345,"+y);
+                if(MASKS[1][6].alpha(345,y,27)<.99)
+                    throw new IOException(
+                        "Cloud Pass photographed gold-pillar cap leaked at 345,"+y);
+            }
+        }
         if(world==1){
             // The outer dark bottom rim of the original baked-in pillar spans
             // x≈350..535 around source y=525. Erase it completely so it
