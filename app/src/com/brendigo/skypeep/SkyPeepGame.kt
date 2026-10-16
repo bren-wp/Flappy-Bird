@@ -629,11 +629,11 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         val stop=min(H,end)
         while(y<stop-0.5f) {
             val size=min(144f,stop-y)
-            // Crop the final repeat instead of squashing a full 144px tile.
-            // This keeps the stone grain and horizontal bands consistent at
-            // both screen edges on every aspect ratio.
+            // Crop the final partial repeat instead of distorting its texture.
+            // Its trailing source rows meet the previous full repeat cleanly.
             val sourceHeight = kotlin.math.ceil(size.toDouble()).toInt().coerceIn(1, 144)
-            batch.draw(tile,x,y,width,size,0,0,128,sourceHeight,false,false)
+            val sourceY = PillarGeometry.trailingSourceY(size)
+            batch.draw(tile,x,y,width,size,0,sourceY,128,sourceHeight,false,false)
             y+=size
         }
     }
