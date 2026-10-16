@@ -30,7 +30,7 @@ class RebuildWorlds {
         }
     }
     private record Area(double x1,double y1,double x2,double y2) implements Region {
-        double alpha(double x,double y,double feather) {
+        public double alpha(double x,double y,double feather) {
             double inside=Math.min(Math.min(x-x1,x2-x),Math.min(y-y1,y2-y));
             if(x>=x1&&x<=x2&&y>=y1&&y<=y2) return clamp(.5+inside/feather);
             double dx=Math.max(Math.max(x1-x,x-x2),0);
