@@ -316,12 +316,26 @@ adb logcat -d -s SkyPeepDifficulty:I '*:S' | grep -q 'loaded=TEMPEST' || {
 adb shell am force-stop com.brendigo.skypeep
 adb logcat -c
 adb shell am start -W --ei sky_peep_qa_world 4 \
-  --ei sky_peep_qa_difficulty 2 --ez sky_peep_qa_background_motion true \
+  --ei sky_peep_qa_difficulty 2 \
   -n com.brendigo.skypeep/.MainActivity
 capture route-wind-gate PLAY
 adb logcat -d -s SkyPeepDifficulty:I '*:S' | grep -q 'loaded=TEMPEST' || {
   echo "FAIL: Wind Gate did not start in the selected Tempest license"; exit 1;
 }
-echo "PASS: three-mode difficulty selection persists and Wind Gate runs."
+# Actually start a live flight. The frozen background QA flag is intentionally
+# omitted: the standard updateGame() must evaluate gravity, wind and speed.
+tap_ui 475 850
+sleep 1
+physics="$(adb logcat -d -s SkyPeepPhysics:I '*:S' | grep 'world=4 mode=TEMPEST' || true)"
+if [[ -z "$physics" ]] || ! grep -Eq 'wind=-?[1-9][0-9]*' <<< "$physics"; then
+  echo "FAIL: live Wind Gate physics did not produce nonzero current"; exit 1;
+fi
+grep -q 'gravity=1943' <<< "$physics" || {
+  echo "FAIL: Tempest gravity was not applied"; exit 1;
+}
+grep -q 'speed=352' <<< "$physics" || {
+  echo "FAIL: Tempest obstacle speed was not applied"; exit 1;
+}
+echo "PASS: difficulty persists and live Tempest Wind Gate physics runs."
 
 echo "PASS: Android app process survives boot and splash navigation."
