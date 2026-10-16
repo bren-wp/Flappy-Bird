@@ -157,7 +157,9 @@ jobs:
           path: release-artifacts
       - name: Publish APK and unsigned AAB after successful QA
         env:
-          GH_TOKEN: ${{ github.token }}
+          # Optional fine-grained Contents:write PAT for repositories where
+          # GITHUB_TOKEN cannot create Releases (HTTP 403). No secret is logged.
+          GH_TOKEN: ${{ secrets.SKYPEEP_RELEASE_TOKEN || github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
           # The branch may have moved while this emulator job was running.
