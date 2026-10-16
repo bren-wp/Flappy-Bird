@@ -10,6 +10,12 @@ on:
 permissions:
   contents: read
 
+# Only validate the newest pushed commit of a branch; outdated emulator
+# executions must not consume CI capacity or publish stale preview builds.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   android:
     runs-on: ubuntu-latest
@@ -154,6 +160,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
+          # The branch may have moved while this emulator job was running.
+          current_head="$(gh api "repos/$GH_REPO/git/ref/heads/$GITHUB_REF_NAME" --jq '.object.sha')"
+          if [[ "$current_head" != "$GITHUB_SHA" ]]; then
+            echo "Skipping stale preview at $GITHUB_SHA; branch head is $current_head"
+            exit 0
+          fi
           VERSION="v0.3.8-preview.${GITHUB_RUN_NUMBER}"
           APK="$(find release-artifacts -type f -name 'app-debug.apk' -print -quit)"
           AAB="$(find release-artifacts -type f -name 'app-release.aab' -print -quit)"
