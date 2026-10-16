@@ -57,7 +57,7 @@ class CompareSkyPeepScreens {
     public static void main(String[] args) throws Exception {
         Path output = Path.of("smoke-results/visual-comparison.txt");
         StringBuilder report = new StringBuilder();
-        report.append("SkyPeep reference-vs-emulator diagnostic, v0.3.8\n")
+        report.append("SkyPeep reference-vs-emulator diagnostic (current Android CI build)\n")
               .append("MAE: mean absolute RGB channel difference (0=exact, 255=max)\n")
               .append("Captured pixels are center-fitted to illustration aspect ratio.\n")
               .append("Dynamic HUD, bird, gameplay and scaled text may differ legitimately.\n")
