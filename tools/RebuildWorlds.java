@@ -70,6 +70,10 @@ class RebuildWorlds {
        // A narrow overlapping plume is part of the fixed photograph.
        new Oval(273,539,77,54),
        new Oval(207,670,137,103),new Oval(51,685,113,58),
+       // Cloud Pass also has a photographed horizontal pale tail immediately
+       // above the fixed bottom pillar. Erase its full left extension without
+       // introducing a rectangle-shaped edge through the midground islands.
+       new Oval(127,764,218,52),
        new Oval(409,839,128,80),new Area(311,851,536,1280),
        new Oval(406,956,139,88)},
       {new Area(0,0,706,207),new Area(234,110,584,533),new Area(-20,421,612,773),new Area(223,703,591,1280)},
