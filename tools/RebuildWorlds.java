@@ -5,6 +5,7 @@ import javax.imageio.*;
 import javax.imageio.stream.ImageOutputStream;
 import java.io.*;
 import java.nio.file.*;
+import java.util.Arrays;
 
 /**
  * Deterministically reconstructs the transparent flight corridor of each
@@ -253,6 +254,62 @@ class RebuildWorlds {
         g.dispose();
         return out;
     }
+    /**
+     * Builds a gently varying sky colour field FROM THE ORIGINAL artwork
+     * beside a removed screenshot obstacle. The former generic procedural
+     * sky inserted artificial mountain/cloud stripes through source scenery.
+     * Sample only blue sky outside every mask, use the channel-wise MEDIAN
+     * to reject islands/stone/crystals, then smooth it vertically.
+     *
+     * This is only used inside already-masked regions of worlds 3 and 4;
+     * all untouched original illustrated pixels remain byte-identical.
+     */
+    private static int[] sourceMatchedSky(
+            BufferedImage source,int world) {
+        int h=source.getHeight(),w=source.getWidth();
+        int[][] sampled=new int[h][3];
+        int[] r=new int[w],g=new int[w],b=new int[w];
+        int[] fallback=PALETTE[world-1][0];
+        int[] last={fallback[0],fallback[1],fallback[2]};
+        for(int y=0;y<h;y++){
+            int count=0;
+            for(int x=0;x<w;x+=4){
+                double mask=0;
+                for(Region shape:MASKS[world-1])
+                    mask=Math.max(mask,shape.alpha(x,y,32));
+                if(mask>=.04)continue;
+                int rgb=source.getRGB(x,y);
+                int red=(rgb>>>16)&255,green=(rgb>>>8)&255,blue=rgb&255;
+                // Source sky, not land, crystals, red flags or clouds.
+                if(blue<=red+16 || green<=red+12 ||
+                   blue<green-24 || green<=105)continue;
+                r[count]=red;g[count]=green;b[count]=blue;
+                count++;
+            }
+            if(count>=8){
+                Arrays.sort(r,0,count);
+                Arrays.sort(g,0,count);
+                Arrays.sort(b,0,count);
+                last=new int[]{r[count/2],g[count/2],b[count/2]};
+            }
+            sampled[y]=last.clone();
+        }
+        int[] smooth=new int[h];
+        for(int y=0;y<h;y++){
+            long sr=0,sg=0,sb=0,total=0;
+            for(int dy=-90;dy<=90;dy++){
+                int sy=Math.max(0,Math.min(h-1,y+dy));
+                int weight=91-Math.abs(dy);
+                sr+=(long)sampled[sy][0]*weight;
+                sg+=(long)sampled[sy][1]*weight;
+                sb+=(long)sampled[sy][2]*weight;
+                total+=weight;
+            }
+            smooth[y]=((int)(sr/total)<<16)|
+                      ((int)(sg/total)<<8)|(int)(sb/total);
+        }
+        return smooth;
+    }
     private static void rebuild(Path file,int world) throws Exception {
         BufferedImage original=ImageIO.read(file.toFile());
         if(original==null)throw new IOException("Unreadable SkyPeep artwork: "+file);
@@ -300,6 +357,9 @@ class RebuildWorlds {
                     throw new IOException("A fixed reference coin remained in world "+world);
         }
         BufferedImage air=sky(w,h,world);
+        // The world 3/4 replacement corridor follows the real scene's local
+        // sky colours instead of a synthetic blue procedural mountain fill.
+        int[] matchedSky=(world==3||world==4)?sourceMatchedSky(original,world):null;
         CoinCircle[] staticCoins=photographedCoins(world);
         int[][] coinSky=new int[staticCoins.length][];
         for(int i=0;i<staticCoins.length;i++)
@@ -342,7 +402,8 @@ class RebuildWorlds {
                 islandSamples++;
                 if(amount<.02)originalIslandPixels++;
             }
-            int from=original.getRGB(x,y),to=air.getRGB(x,y);
+            int from=original.getRGB(x,y);
+            int to=matchedSky==null?air.getRGB(x,y):matchedSky[y];
             if(coveredCoin>=0 && coinAlpha>0)
                 to=coinBackdrop(coinSky[coveredCoin],staticCoins[coveredCoin],y);
             int r=mix((from>>>16)&255,(to>>>16)&255,amount),
