@@ -21,7 +21,7 @@ import com.badlogic.gdx.graphics.g2d.GlyphLayout
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.math.MathUtils
 import com.badlogic.gdx.math.Vector2
-import com.badlogic.gdx.utils.viewport.FitViewport
+import com.badlogic.gdx.utils.viewport.ExtendViewport
 import java.util.Locale
 import kotlin.math.max
 import kotlin.math.min
@@ -55,7 +55,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
 
     private lateinit var batch: SpriteBatch
     private lateinit var camera: OrthographicCamera
-    private lateinit var viewport: FitViewport
+    private lateinit var viewport: ExtendViewport
+    private var visibleFrame = SkyPeepScreenFrame.forPixels(941,1672)
     private lateinit var prefs: Preferences
     private val pictures = mutableMapOf<String, Texture>()
     private var loadedScreenArt: String? = null
@@ -117,8 +118,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     override fun create() {
         batch = SpriteBatch()
         camera = OrthographicCamera()
-        viewport = FitViewport(W, H, camera)
-        viewport.update(Gdx.graphics.width, Gdx.graphics.height, true)
+        viewport = ExtendViewport(W, H, camera)
+        resize(Gdx.graphics.width, Gdx.graphics.height)
         batch.projectionMatrix = camera.combined
         prefs = Gdx.app.getPreferences("SkyPeepSettingsAndProgress")
         best = prefs.getInteger("best", 0).coerceAtLeast(0)
@@ -268,8 +269,18 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     }
 
     override fun resize(width: Int, height: Int) {
-        viewport.update(width, height, true)
+        if (width <= 0 || height <= 0) return
+        visibleFrame = SkyPeepScreenFrame.forPixels(width, height)
+        // ExtendViewport consumes the entire device display. Recenter its
+        // expanded world around the original reference art rather than
+        // shifting the buttons, HUD, collision world or tap targets.
+        viewport.update(width, height, false)
+        camera.position.set(W*.5f, H*.5f, 0f)
         camera.update()
+        Gdx.app.log("SkyPeepViewport",
+            "device=${width}x${height} frame=" +
+            "${visibleFrame.left},${visibleFrame.bottom}.." +
+            "${visibleFrame.right},${visibleFrame.top}")
     }
 
     override fun render() {
@@ -289,6 +300,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         viewport.apply()
         batch.projectionMatrix = camera.combined
         batch.begin()
+        drawFullBleedEdges()
         when (screen) {
             Screen.SPLASH -> image("screen_splash", 0f, 0f, W, H)
             Screen.MENU -> { image("screen_menu", 0f, 0f, W, H); drawMenuWallet() }
@@ -312,6 +324,66 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         batch.end()
     }
 
+    /**
+     * Paint the *real artwork's outer edge pixels* into ExtendViewport's
+     * additional display area. The illustrated 941x1672 UI stays undistorted
+     * and every original touch rectangle remains at its reference position.
+     * No bars are left blank on tall phones or wide tablets.
+     */
+    private fun drawFullBleedEdges() {
+        val name = when(screen) {
+            Screen.PLAY -> "bg_$level"
+            Screen.RESULT -> if(resultWon) "bg_$level" else "screen_over"
+            Screen.SHOP, Screen.SETTINGS -> "screen_menu"
+            Screen.SPLASH -> "screen_splash"
+            Screen.MENU -> "screen_menu"
+            Screen.MAP -> "screen_map"
+            Screen.PAUSE -> "screen_pause"
+            Screen.SKINS -> "screen_skins"
+        }
+        val texture = pictures[name] ?: return
+        val f=visibleFrame
+        if(f.extraY>.01f) {
+            // LibGDX source pixels use top-left origin. These thin strips
+            // extend natural sky above and ground/clouds below the artwork.
+            batch.draw(texture,0f,-f.extraY,W,f.extraY,
+                0,texture.height-4,texture.width,4,false,false)
+            batch.draw(texture,0f,H,W,f.extraY,
+                0,0,texture.width,4,false,false)
+        }
+        if(f.extraX>.01f) {
+            batch.draw(texture,-f.extraX,-f.extraY,
+                f.extraX,H+2f*f.extraY,
+                0,0,4,texture.height,false,false)
+            batch.draw(texture,W,-f.extraY,
+                f.extraX,H+2f*f.extraY,
+                texture.width-4,0,4,texture.height,false,false)
+        }
+        // Shop and Settings darken the main-menu art beneath their cream
+        // panels. Continue that EXACT overlay into the expanded margins:
+        // otherwise tall devices show a bright rectangular seam around the
+        // centre panel while its photographed background is dimmed.
+        val shade=when(screen) {
+            Screen.SHOP -> Color(.04f,.13f,.30f,.72f)
+            Screen.SETTINGS -> Color(0f,.07f,.17f,.68f)
+            Screen.RESULT -> if(resultWon) Color(.06f,.16f,.32f,.29f)
+                             else null
+            else -> null
+        }
+        if(shade!=null) {
+            if(f.extraY>.01f) {
+                drawRect(0f,-f.extraY,W,f.extraY,shade)
+                drawRect(0f,H,W,f.extraY,shade)
+            }
+            if(f.extraX>.01f) {
+                drawRect(-f.extraX,-f.extraY,f.extraX,
+                    H+2f*f.extraY,shade)
+                drawRect(W,-f.extraY,f.extraX,
+                    H+2f*f.extraY,shade)
+            }
+        }
+    }
+
     private fun handleInput() {
         if (Gdx.input.isKeyJustPressed(Input.Keys.BACK) || Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             when (screen) {
@@ -326,7 +398,13 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         if (!Gdx.input.justTouched()) return
         touch.set(Gdx.input.x.toFloat(), Gdx.input.y.toFloat())
         viewport.unproject(touch)
-        if (touch.x < 0 || touch.x > W || touch.y < 0 || touch.y > H) return
+        if (touch.x < visibleFrame.left || touch.x > visibleFrame.right ||
+            touch.y < visibleFrame.bottom || touch.y > visibleFrame.top) return
+        // Extra viewport strips are scenery only on menu/dialogue pages.
+        // During gameplay tapping any visible sky should still flap.
+        if (screen != Screen.PLAY &&
+            (touch.x < 0f || touch.x > W ||
+             touch.y < 0f || touch.y > H)) return
         val x = touch.x
         val yTop = H - touch.y
         when (screen) {
@@ -334,7 +412,10 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
             Screen.MENU -> clickMenu(x, yTop)
             Screen.MAP -> clickMap(x, yTop)
             Screen.PLAY -> {
-                if (hit(x,yTop,806f,0f,135f,155f)) { screen = Screen.PAUSE; playSound("click") }
+                if (hit(x,yTop,806f,-visibleFrame.extraY,135f,155f)) {
+                    screen = Screen.PAUSE
+                    playSound("click")
+                }
                 else flap()
             }
             Screen.PAUSE -> clickPause(x,yTop)
@@ -573,14 +654,20 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         verticalSpeed = max(-900f * difficulty.gravityFactor,
             verticalSpeed + (skyCurrent - gravity)*dt)
         birdY += verticalSpeed * dt
-        if (birdY < 38f || birdY + BIRD_H > H - 205f) { finish(false); return }
+        val birdBody=SkyPeepContact.body(BIRD_X,birdY,BIRD_W,BIRD_H)
+        if (SkyPeepContact.hitsWorldEdge(birdBody,
+                visibleFrame.bottom,visibleFrame.top)) {
+            finish(false)
+            return
+        }
         val gap = SkyRouteRules.gap(level,difficulty)
         val moveSpeed = SkyRouteRules.speed(level,difficulty)
         nextGate -= dt
         if (nextGate <= 0f) {
             nextGate=SkyRouteRules.spawnSeconds(level,difficulty)
             val center = MathUtils.random(570f,1110f)
-            gates.add(Gate(W+80f,center,gem=(score>0 && MathUtils.random(0,9)==0)))
+            gates.add(Gate(SkyPeepScreenFrame.pillarSpawnX(visibleFrame),
+                center,gem=(score>0 && MathUtils.random(0,9)==0)))
         }
         val iterator=gates.iterator()
         while (iterator.hasNext()) {
@@ -589,16 +676,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
             val gateWidth=GATE_WIDTH
             val topLimit=gate.centerY+gap*.5f
             val bottomLimit=gate.centerY-gap*.5f
-            val hitLeft = BIRD_X + 48f
-            val hitRight = BIRD_X + BIRD_W - 53f
-            val hitBottom=birdY+52f
-            val hitTop=birdY+BIRD_H-55f
-            if (FlightRules.intersectsObstacle(
-                    gateX = gate.x, gateWidth = gateWidth,
-                    gapBottom = bottomLimit, gapTop = topLimit,
-                    birdLeft = hitLeft, birdRight = hitRight,
-                    birdBottom = hitBottom, birdTop = hitTop
-                )) {
+            if (SkyPeepContact.hitsGate(
+                    birdBody,gate.x,gateWidth,bottomLimit,topLimit)) {
                 finish(false)
                 return
             }
@@ -653,7 +732,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
                 } else precisionStreak=0
                 if (score >= targetScore()) { finish(true); return }
             }
-            if (gate.x < -400f) iterator.remove()
+            if (gate.x < SkyPeepScreenFrame.pillarDespawnX(visibleFrame))
+                iterator.remove()
         }
     }
 
@@ -708,8 +788,10 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
             // Continuous, textured shafts sit behind the original illustrated caps.
             val stemX = gate.x + 53f
             val stemW = pillarWidth - 105f
-            drawStoneStem(stemX,stemW,PillarGeometry.topTailStart(topY,top.height.toFloat()),H)
-            drawStoneStem(stemX,stemW,0f,
+            drawStoneStem(stemX,stemW,
+                PillarGeometry.topTailStart(topY,top.height.toFloat()),
+                visibleFrame.top)
+            drawStoneStem(stemX,stemW,visibleFrame.bottom,
                 PillarGeometry.bottomTailHeight(bottomY,bottom.height.toFloat()))
             image("pillar_${level}_top",gate.x,topY,pillarWidth,top.height.toFloat())
             image("pillar_${level}_bottom",gate.x,bottomY-bottom.height,
@@ -737,8 +819,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
 
     private fun drawStoneStem(x:Float,width:Float,start:Float,end:Float) {
         val tile=pillarStem ?: return
-        var y=max(0f,start)
-        val stop=min(H,end)
+        var y=max(visibleFrame.bottom,start)
+        val stop=min(visibleFrame.top,end)
         while(y<stop-0.5f) {
             val size=min(144f,stop-y)
             // Crop the final partial repeat instead of distorting its texture.
@@ -796,15 +878,18 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
 
     private fun drawHUD() {
         // Exact cropped reference HUD layers. Dynamic figures replace reference mockup values.
-        image("hud_left_$level", 14f, H-123f, 269f, 113f)
-        image("hud_right_$level", 635f, H-124f, 191f, 115f)
-        image("hud_pause_$level", 811f, H-129f, 125f, 122f)
-        image("hud_score_$level", 286f, H-218f, 367f, 210f)
+        // On tall displays HUD art belongs to the PHYSICAL top of the
+        // expanded world, never floating below an unused top inset.
+        val top=visibleFrame.top
+        image("hud_left_$level", 14f, top-123f, 269f, 113f)
+        image("hud_right_$level", 635f, top-124f, 191f, 115f)
+        image("hud_pause_$level", 811f, top-129f, 125f, 122f)
+        image("hud_score_$level", 286f, top-218f, 367f, 210f)
         // The original six wallet plates are now cleaned at build time.
         // Keep illustrated gemstone, coin and edge strokes 1:1; no generic
         // overlay pills that hide the original decorative cyan borders.
-        fitted(SkyPeepHudNumbers.compact(coins),H-55f,fontSmall,1.78f,115f,191f)
-        fitted(SkyPeepHudNumbers.compact(gems),H-53f,fontSmall,1.75f,63f,766f)
+        fitted(SkyPeepHudNumbers.compact(coins),top-55f,fontSmall,1.78f,115f,191f)
+        fitted(SkyPeepHudNumbers.compact(gems),top-53f,fontSmall,1.75f,63f,766f)
         // Each original score face is cleared and reconstructed during build.
         // Render changing points on its own themed face, with a crisp outline.
         drawWingedScore()
@@ -815,7 +900,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         // The score is part of the bright illustrated winged HUD, not a
         // separate dark overlay. Keep the large reference-style outlined
         // numerals centred and automatically fit three-plus digit results.
-        val baseline=H-65f
+        val baseline=visibleFrame.top-65f
         val size=1.30f
         val available=171f
         val center=W/2f
@@ -983,11 +1068,32 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         }
     }
 
+    /** Reuse the real illustrated aviator (and equipped costume) as a
+     * decorative mascot on screens lacking a supplied baked-in bird panel.
+     * Unlike a screenshot overlay, this stays a proper transparent sprite.
+     */
+    private fun drawMenuMascot(x:Float,y:Float,width:Float) {
+        val bird=pictures["bird_idle"] ?: return
+        val scale=width/BIRD_W
+        val height=width*bird.height/bird.width
+        batch.draw(bird,x,y,width,height)
+        if(selectedSkin>0) costumes[selectedSkin]?.let { costume ->
+            batch.draw(costume,
+                x+SkyPeepBirdLayout.COSTUME_X*scale,
+                y+height-SkyPeepBirdLayout.COSTUME_Y_FROM_TOP*scale,
+                SkyPeepBirdLayout.COSTUME_WIDTH*scale,
+                SkyPeepBirdLayout.COSTUME_HEIGHT*scale)
+        }
+    }
+
     private fun drawShop() {
         // Dedicated functional store, not the old SKINS screen duplicated.
         drawRect(0f,0f,W,H,Color(.04f,.13f,.30f,.72f))
         badge("cream",72f,180f,797f,1320f)
         badge("wood",117f,1365f,708f,122f)
+        // Native bird illustration gives the SHOP its own SkyPeep identity,
+        // as in the supplied PAUSE/SKINS design rather than a generic dialog.
+        drawMenuMascot(383f,1481f,175f)
         fitted("FLIGHT TRAILS",1444f,fontLarge,1.28f,657f)
         badge("dark",118f,1252f,338f,90f)
         badge("dark",483f,1252f,338f,90f)
@@ -1030,6 +1136,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         drawRect(0f,0f,W,H,Color(0f,.07f,.17f,.68f))
         badge("cream",91f,348f,759f,1020f)
         badge("wood",132f,1214f,677f,139f)
+        drawMenuMascot(381f,1350f,179f)
         fitted("SETTINGS",1340f,fontLarge,1.55f,627f)
         val names=arrayOf("MUSIC","SOUND EFFECTS","VIBRATION","DIFFICULTY")
         for(i in names.indices) {
@@ -1097,16 +1204,35 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
             val pix=Pixmap(192,80,Pixmap.Format.RGBA8888)
             pix.setColor(0f,0f,0f,0f)
             pix.fill()
+            // Render the same premium illustration treatment used by
+            // reference PLAY/PAUSE buttons: thick chocolate silhouette,
+            // coloured inset bevel, broad glossy shoulder and shaded base.
+            // The border is antialiased and the patch remains 9-slice safe.
             for(y in 0 until 80) for(x in 0 until 192) {
                 val dx=max(0f,kotlin.math.abs(x-95.5f)-64.5f)
                 val dy=max(0f,kotlin.math.abs(y-39.5f)-9.5f)
                 val d=kotlin.math.sqrt(dx*dx+dy*dy)
                 if(d>30f) continue
-                val c=if(d>26f) Color(.09f,.14f,.22f,1f) else {
-                    val brightness=if(y<20) 1.12f else if(y>65) .88f else 1f
-                    Color((base.r*brightness).coerceIn(0f,1f),
-                          (base.g*brightness).coerceIn(0f,1f),
-                          (base.b*brightness).coerceIn(0f,1f),1f)
+                val edgeAlpha=((30f-d)/1.65f).coerceIn(0f,1f)
+                val vertical=y/79f
+                val c=when {
+                    d>=25f -> Color(.17f,.075f,.055f,edgeAlpha)
+                    d>=22f -> Color(.39f,.20f,.12f,edgeAlpha)
+                    d>=19f -> Color(
+                        (base.r*.66f).coerceIn(0f,1f),
+                        (base.g*.61f).coerceIn(0f,1f),
+                        (base.b*.57f).coerceIn(0f,1f),edgeAlpha)
+                    else -> {
+                        var brightness=1.19f-.29f*vertical
+                        if(y<=17) brightness+=.07f
+                        if(y>=66) brightness-=.12f
+                        if(y in 13..17 && x in 28..154)
+                            brightness+=.085f
+                        if(d>=15f) brightness-=.045f
+                        Color((base.r*brightness).coerceIn(0f,1f),
+                              (base.g*brightness).coerceIn(0f,1f),
+                              (base.b*brightness).coerceIn(0f,1f),edgeAlpha)
+                    }
                 }
                 pix.drawPixel(x,y,Color.rgba8888(c))
             }

@@ -34,6 +34,9 @@ Fly through **Sky Start**, **Cloud Pass**, **Crystal Drop**, **Wind Gate**, **Mo
 
 - 🌬️ Three selectable Sky Route flight licenses with world-specific currents and 18 challenge variants
 - 🧭 Optional precision-centre streaks, skill-based one-to-three-star victories and independent mode records
+- 🎯 Fair visible-body collision geometry: no invisible wing/scarf hits when flying close to stone obstacles
+- 📱 Full-screen Android presentation for tall/compact/wide devices, with preserved artwork proportions and physically top-anchored HUD
+- 🎨 More illustrated, polished Shop and Settings controls with the original SkyPeep mascot
 - 🎮 Responsive touch-to-flap flight and score progression
 - 🗺️ Six themed levels with stars and unlocks
 - 🐦 Three-frame character flight animation with distinct Captain, Forest, Cosmic and Royal 2D costumes
@@ -53,6 +56,8 @@ Fly through **Sky Start**, **Cloud Pass**, **Crystal Drop**, **Wind Gate**, **Mo
 - ☁️ Soft unified cloud layers and distant world-specific mountain silhouettes, with more accurate collectible hitboxes
 - 📤 Share your score through Android
 - 🔐 Offline by design, with no network or location permission; safer local score sharing and resilient progress rewards
+
+**Responsive QA:** CI also captures actual 1080×2400, 720×1280 and 1200×1920 Android screens and checks that the centred original illustration remains aligned, with no empty letterboxes. Detailed regression scope and remaining limits are in [contact and responsive QA](docs/CONTACT_AND_RESPONSIVE_QA.md).
 
 ## Android builds and quality assurance
 
