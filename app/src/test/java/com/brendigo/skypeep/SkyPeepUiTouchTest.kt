@@ -27,6 +27,10 @@ class SkyPeepUiTouchTest {
         }
         assertNull(SkyPeepUiTouch.skinPurchaseAt(230f, 1400f))
         assertNull(SkyPeepUiTouch.skinPurchaseAt(940f, 1400f))
+        assertEquals(1, SkyPeepUiTouch.skinPurchaseAt(100f, 1450f))
+        assertFalse("Captain BUY must not go back", SkyPeepUiTouch.skinsBack(100f, 1450f))
+        assertTrue(SkyPeepUiTouch.skinsBack(100f, 1560f))
+        assertFalse(SkyPeepUiTouch.skinsBack(100f, 1490f))
     }
 
     @Test fun shopOnlyAcceptsVisibleOfferControlsAndBack() {
