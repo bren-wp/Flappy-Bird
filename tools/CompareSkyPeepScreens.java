@@ -57,7 +57,7 @@ class CompareSkyPeepScreens {
     public static void main(String[] args) throws Exception {
         Path output = Path.of("smoke-results/visual-comparison.txt");
         StringBuilder report = new StringBuilder();
-        report.append("SkyPeep reference-vs-emulator diagnostic, v0.3.8\n")
+        report.append("SkyPeep reference-vs-emulator diagnostic (current Android CI build)\n")
               .append("MAE: mean absolute RGB channel difference (0=exact, 255=max)\n")
               .append("Captured pixels are center-fitted to illustration aspect ratio.\n")
               .append("Dynamic HUD, bird, gameplay and scaled text may differ legitimately.\n")
@@ -71,6 +71,36 @@ class CompareSkyPeepScreens {
                 "%s | MAE=%.2f/255 | screenshot=%dx%d | reference=%dx%d%n",
                 scene[0], error, screenshot.getWidth(), screenshot.getHeight(),
                 reference.getWidth(), reference.getHeight()));
+        }
+        // Real Android screenshot guard, not just a generated-asset check.
+        // Sample an unobstructed interior point on the winged score face; it
+        // must remain pale in each of the six individually themed worlds.
+        // The X/Y fractions are viewport-independent for portrait screens.
+        for (int world=1;world<=6;world++) {
+            BufferedImage screenshot=load(Path.of("smoke-results","world-"+world+".png"));
+            // Probe the left, lower interior of the rendered score face.
+            // The original white cloud crowns live higher up, while the
+            // dynamic numeral is centered horizontally. These four samples
+            // test the actual background without intersecting either.
+            int minimum=255, total=0, count=0;
+            for(double fx:new double[]{.445,.453})
+                for(double fy:new double[]{.065,.066}) {
+                    int x=(int)(screenshot.getWidth()*fx);
+                    int y=(int)(screenshot.getHeight()*fy);
+                    int rgb=screenshot.getRGB(x,y);
+                    int luminance=(((rgb>>>16)&255)*299
+                        +((rgb>>>8)&255)*587+(rgb&255)*114)/1000;
+                    minimum=Math.min(minimum,luminance);
+                    total+=luminance;
+                    count++;
+                }
+            int average=total/count;
+            report.append("world-").append(world).append(
+                " | score-face base minimum=").append(minimum)
+                .append("/255 average=").append(average).append("/255\n");
+            if(minimum<180 || average<195)throw new IOException(
+                "Dark score-face base in world "+world+
+                " (minimum="+minimum+", average="+average+"). Check screenshot.");
         }
         Files.writeString(output, report.toString(), StandardCharsets.UTF_8);
         System.out.print(report);
