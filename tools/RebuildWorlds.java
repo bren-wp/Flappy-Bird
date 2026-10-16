@@ -221,18 +221,17 @@ class RebuildWorlds {
         int w=original.getWidth(),h=original.getHeight();
         if(w!=706||h!=1254)throw new IOException("Unexpected art size: "+w+"x"+h);
         if(world==2){
-            // These two source pixels are the actual baked gold LOWER PILLAR
-            // on the right side of the photo, not white clouds/green island.
-            // Keep them fully removed while protecting the real landscape.
-            for(int y:new int[]{805,810}){
-                int src=original.getRGB(345,y);
-                int red=(src>>>16)&255,green=(src>>>8)&255,blue=src&255;
-                if(red<blue+55 || green<blue+35)
+            // The bottom-pillar cap has its own stable mask, independent of
+            // the removed broad plume oval. Assert its geometry, not an
+            // assumed input-pixel colour: packed source artwork and a
+            // resized reference screenshot do not have identical RGBs.
+            // (x=400,y=830) is well inside the cap mask; near its left edge
+            // the historic cap-overlap region must also remain covered.
+            for(int[] point:new int[][]{{400,830},{345,810}}){
+                if(MASKS[1][6].alpha(point[0],point[1],27)<.99)
                     throw new IOException(
-                        "Cloud Pass gold-pillar cap source moved: 345,"+y);
-                if(MASKS[1][6].alpha(345,y,27)<.99)
-                    throw new IOException(
-                        "Cloud Pass photographed gold-pillar cap leaked at 345,"+y);
+                        "Cloud Pass separate pillar-cap mask no longer covers "
+                        +point[0]+","+point[1]);
             }
         }
         if(world==1){
