@@ -41,8 +41,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         private const val W = 941f
         private const val H = 1672f
         private const val BIRD_X = 172f
-        private const val BIRD_W = 245f
-        private const val BIRD_H = 215f
+        private val BIRD_W = SkyPeepBirdLayout.WIDTH
+        private val BIRD_H = SkyPeepBirdLayout.HEIGHT
         // Rendered pillar assets occupy the full width, including their caps.
         private const val GATE_WIDTH = 275f
         private const val MAX_LEVEL = 6
@@ -781,7 +781,11 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         batch.color=Color.WHITE
         // Separate costume layer remains crisp across each of the 3 wing poses.
         if (selectedSkin != 0) costumes[selectedSkin]?.let { costume ->
-            batch.draw(costume, BIRD_X + 54f, birdY + BIRD_H - 90f, 140f, 84f)
+            batch.draw(costume,
+                BIRD_X + SkyPeepBirdLayout.COSTUME_X,
+                birdY + BIRD_H - SkyPeepBirdLayout.COSTUME_Y_FROM_TOP,
+                SkyPeepBirdLayout.COSTUME_WIDTH,
+                SkyPeepBirdLayout.COSTUME_HEIGHT)
         }
     }
 
