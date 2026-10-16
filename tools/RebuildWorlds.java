@@ -33,15 +33,28 @@ class RebuildWorlds {
     };
     // 706 x 1254 world assets, with original artwork coordinates.
     private static final Area[][] MASKS = {
-      {new Area(0,0,706,210),new Area(238,115,551,520),new Area(-20,433,574,765),new Area(220,698,574,1280)},
-      {new Area(0,0,706,212),new Area(244,110,556,525),new Area(-20,429,606,771),new Area(238,707,587,1280)},
+      // World 1-2: mask ONLY the photographed HUD, baked-in character,
+      // motion streaks and fixed stone pillars. The older huge rectangles
+      // erased real illustrated islands, mountains and clouds at mid-screen.
+      // These source-pixel-space regions retain far more original scenery.
+      {new Area(0,0,706,185),new Area(335,92,538,530),
+       new Area(104,493,378,700),new Area(-20,553,172,699),
+       new Area(337,668,550,1280)},
+      {new Area(0,0,706,185),new Area(279,154,541,599),
+       new Area(88,580,316,751),new Area(-20,636,135,752),
+       new Area(276,772,542,1280)},
       {new Area(0,0,706,207),new Area(234,110,584,533),new Area(-20,421,612,773),new Area(223,703,591,1280)},
       {new Area(0,0,706,216),new Area(194,105,651,533),new Area(-20,424,687,771),new Area(223,697,590,1280),new Area(594,642,746,1100)},
       {new Area(0,0,706,207),new Area(233,103,580,528),new Area(-20,418,618,774),new Area(219,695,591,1280)},
       {new Area(0,0,706,210),new Area(277,106,574,534),new Area(-20,418,618,774),new Area(251,700,586,1280)}
     };
     private static final Area[][] COINS = {
-      {}, {new Area(448,562,691,772)}, {},
+      {},
+      // Remove the three baked-in collectible coins individually without
+      // wiping out the intervening real island and cloud illustrations.
+      {new Area(472,587,526,654),new Area(420,650,477,712),
+       new Area(365,705,415,765)},
+      {},
       {new Area(393,553,689,721)},
       {new Area(339,560,694,751)}, {}
     };
@@ -128,15 +141,34 @@ class RebuildWorlds {
         if(w!=706||h!=1254)throw new IOException("Unexpected art size: "+w+"x"+h);
         BufferedImage air=sky(w,h,world);
         BufferedImage output=new BufferedImage(w,h,BufferedImage.TYPE_INT_RGB);
+        int preserved=0, sampled=0;
         for(int y=0;y<h;y++)for(int x=0;x<w;x++){
             double amount=0;
-            for(Area a:MASKS[world-1]) amount=Math.max(amount,a.alpha(x,y,92));
-            for(Area a:COINS[world-1]) amount=Math.max(amount,a.alpha(x,y,68));
+            // An 18px feather removes visible rectangular mask edges without
+            // bleeding 90+ pixels into valuable original illustrated scenery.
+            // Worlds 3-6 retain their proven legacy mask/feather geometry here.
+            int feather=world<=2?18:92;
+            for(Area a:MASKS[world-1]) amount=Math.max(amount,a.alpha(x,y,feather));
+            for(Area a:COINS[world-1])
+                amount=Math.max(amount,a.alpha(x,y,world==2?17:68));
+            // The retention gate is deliberately in the gameplay strip,
+            // excluding the source screenshot's static top HUD and bottom UI.
+            if(world<=2 && x%4==0 && y%4==0 && y>=210 && y<1100){
+                sampled++;
+                if(amount<.08) preserved++;
+            }
             int from=original.getRGB(x,y),to=air.getRGB(x,y);
             int r=mix((from>>>16)&255,(to>>>16)&255,amount),
                 g=mix((from>>>8)&255,(to>>>8)&255,amount),
                 b=mix(from&255,to&255,amount);
             output.setRGB(x,y,(r<<16)|(g<<8)|b);
+        }
+        if(world<=2){
+            double fraction=preserved/(double)Math.max(1,sampled);
+            System.out.printf("SkyPeep world %d: %.1f%% original midground retained%n",
+                world,fraction*100.0);
+            if(fraction<.49)throw new IOException(
+                "Illustrated scene lost too much original detail in world "+world);
         }
         ImageWriter writer=ImageIO.getImageWritersByFormatName("jpeg").next();
         try(OutputStream o=Files.newOutputStream(file);
