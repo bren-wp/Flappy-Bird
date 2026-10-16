@@ -44,6 +44,17 @@ class SkyPeepScreenFrameTest {
         }
     }
 
+    @Test fun pillarsSpawnOutsideVisibleRegionEvenOnVeryWideTablets() {
+        for((w,h) in listOf(941 to 1672,1080 to 2400,
+                1200 to 1920,2048 to 1536,2400 to 1080)) {
+            val frame=SkyPeepScreenFrame.forPixels(w,h)
+            assertEquals(frame.right+80f,
+                SkyPeepScreenFrame.pillarSpawnX(frame),.001f)
+            assertTrue(SkyPeepScreenFrame.pillarSpawnX(frame)>frame.right)
+            assertTrue(SkyPeepScreenFrame.pillarDespawnX(frame)<frame.left)
+        }
+    }
+
     @Test(expected=IllegalArgumentException::class)
     fun invalidScreenWidthIsRejected() {
         SkyPeepScreenFrame.forPixels(0,2000)
