@@ -777,7 +777,12 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
             else -> Color(1f,.91f,.76f,1f)
         }
         batch.color=alt
-        batch.draw(tx,BIRD_X,birdY,BIRD_W,BIRD_H)
+        // Each bird pose is cropped differently in the source sprites.
+        // Use its own natural aspect ratio without shifting SkyPeep's centre.
+        batch.draw(tx,
+            BIRD_X + SkyPeepBirdLayout.leftFor(tx.width,tx.height),
+            birdY,
+            SkyPeepBirdLayout.widthFor(tx.width,tx.height),BIRD_H)
         batch.color=Color.WHITE
         // Separate costume layer remains crisp across each of the 3 wing poses.
         if (selectedSkin != 0) costumes[selectedSkin]?.let { costume ->
