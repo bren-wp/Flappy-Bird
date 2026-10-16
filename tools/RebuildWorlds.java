@@ -69,7 +69,10 @@ class RebuildWorlds {
        new Area(309,147,532,448),new Oval(410,489,150,106),
        // A narrow overlapping plume is part of the fixed photograph.
        new Oval(273,539,77,54),
-       new Oval(207,670,137,103),new Oval(51,685,113,58),
+       // The photographed bird ends above the central cloud banks.
+       // A taller old bird mask also erased genuine bright cloud pixels near
+       // (280,750). Keep the live sprite separate while preserving clouds.
+       new Oval(207,644,141,100),new Oval(51,685,113,58),
        // Preserve the real left floating island and waterfall at
        // x=50..280, y=750..830. The previous broad "lower plume" oval
        // replaced green foliage with blue sky (regression found in PR #25).
@@ -272,7 +275,9 @@ class RebuildWorlds {
             // remain unchanged before JPEG encoding. Earlier overly broad
             // foliage-removal masks painted these positions flat blue.
             final int[][] protectedPixels={
-                {75,780},{100,780},{160,783},{100,800},{245,810}
+                {75,780},{100,780},{160,783},{100,800},{245,810},
+                // Original Cloud Pass cloud crown, NOT fixed-pillar plume.
+                {280,750},{300,750}
             };
             for(int[] point:protectedPixels){
                 int x=point[0],y=point[1];
@@ -285,7 +290,7 @@ class RebuildWorlds {
                 }
             }
             System.out.println(
-                "SkyPeep world 2: original island and waterfall ROI source pixels intact");
+                "SkyPeep world 2: original island, waterfall and cloud ROI source pixels intact");
         }
         if(world<=2){
             double fraction=preserved/(double)Math.max(1,sampled);
