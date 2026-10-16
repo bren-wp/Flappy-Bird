@@ -375,7 +375,13 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         if (!Gdx.input.justTouched()) return
         touch.set(Gdx.input.x.toFloat(), Gdx.input.y.toFloat())
         viewport.unproject(touch)
-        if (touch.x < 0 || touch.x > W || touch.y < 0 || touch.y > H) return
+        if (touch.x < visibleFrame.left || touch.x > visibleFrame.right ||
+            touch.y < visibleFrame.bottom || touch.y > visibleFrame.top) return
+        // Extra viewport strips are scenery only on menu/dialogue pages.
+        // During gameplay tapping any visible sky should still flap.
+        if (screen != Screen.PLAY &&
+            (touch.x < 0f || touch.x > W ||
+             touch.y < 0f || touch.y > H)) return
         val x = touch.x
         val yTop = H - touch.y
         when (screen) {
@@ -383,7 +389,10 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
             Screen.MENU -> clickMenu(x, yTop)
             Screen.MAP -> clickMap(x, yTop)
             Screen.PLAY -> {
-                if (hit(x,yTop,806f,0f,135f,155f)) { screen = Screen.PAUSE; playSound("click") }
+                if (hit(x,yTop,806f,-visibleFrame.extraY,135f,155f)) {
+                    screen = Screen.PAUSE
+                    playSound("click")
+                }
                 else flap()
             }
             Screen.PAUSE -> clickPause(x,yTop)
@@ -844,15 +853,18 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
 
     private fun drawHUD() {
         // Exact cropped reference HUD layers. Dynamic figures replace reference mockup values.
-        image("hud_left_$level", 14f, H-123f, 269f, 113f)
-        image("hud_right_$level", 635f, H-124f, 191f, 115f)
-        image("hud_pause_$level", 811f, H-129f, 125f, 122f)
-        image("hud_score_$level", 286f, H-218f, 367f, 210f)
+        // On tall displays HUD art belongs to the PHYSICAL top of the
+        // expanded world, never floating below an unused top inset.
+        val top=visibleFrame.top
+        image("hud_left_$level", 14f, top-123f, 269f, 113f)
+        image("hud_right_$level", 635f, top-124f, 191f, 115f)
+        image("hud_pause_$level", 811f, top-129f, 125f, 122f)
+        image("hud_score_$level", 286f, top-218f, 367f, 210f)
         // The original six wallet plates are now cleaned at build time.
         // Keep illustrated gemstone, coin and edge strokes 1:1; no generic
         // overlay pills that hide the original decorative cyan borders.
-        fitted(SkyPeepHudNumbers.compact(coins),H-55f,fontSmall,1.78f,115f,191f)
-        fitted(SkyPeepHudNumbers.compact(gems),H-53f,fontSmall,1.75f,63f,766f)
+        fitted(SkyPeepHudNumbers.compact(coins),top-55f,fontSmall,1.78f,115f,191f)
+        fitted(SkyPeepHudNumbers.compact(gems),top-53f,fontSmall,1.75f,63f,766f)
         // Each original score face is cleared and reconstructed during build.
         // Render changing points on its own themed face, with a crisp outline.
         drawWingedScore()
@@ -863,7 +875,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         // The score is part of the bright illustrated winged HUD, not a
         // separate dark overlay. Keep the large reference-style outlined
         // numerals centred and automatically fit three-plus digit results.
-        val baseline=H-65f
+        val baseline=visibleFrame.top-65f
         val size=1.30f
         val available=171f
         val center=W/2f
