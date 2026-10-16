@@ -91,25 +91,48 @@ class RebuildWorlds {
     };
     private static int mix(int a,int b,double t){return (int)Math.round(a+(b-a)*t);}
     /**
-     * Reconstruct small removed coins from the actual local photographed sky
-     * to avoid three blue circular patches caused by the global sky palette.
-     * The two samples lie outside the coin's original outline, and colours
-     * interpolate at each row so clouds and horizon tonal gradients continue.
+     * Small removed coins use the real scene's nearby BLUE sky samples,
+     * never a scanline running through the neighboring photographed coin.
+     * Excluding yellow outlines and averaging an annulus prevents stripes.
+     * Upper and lower samples preserve the local vertical colour gradient.
      */
-    private static int localCoinBackdrop(
-            BufferedImage source,CoinCircle coin,int px,int py) {
-        int y=Math.max(0,Math.min(source.getHeight()-1,py));
-        int leftX=Math.max(0,(int)Math.round(coin.centerX-coin.radius-17));
-        int rightX=Math.min(source.getWidth()-1,
-            (int)Math.round(coin.centerX+coin.radius+17));
-        double t=clamp((px-leftX)/(double)Math.max(1,rightX-leftX));
-        int a=source.getRGB(leftX,y),b=source.getRGB(rightX,y);
-        int r=mix((a>>>16)&255,(b>>>16)&255,t);
-        int g=mix((a>>>8)&255,(b>>>8)&255,t);
-        int blue=mix(a&255,b&255,t);
+    private static int[] coinSkyColours(BufferedImage source,CoinCircle coin) {
+        long[][] sums=new long[2][4];
+        int cx=(int)Math.round(coin.centerX),cy=(int)Math.round(coin.centerY);
+        for(int dy=-81;dy<=81;dy+=2)for(int dx=-81;dx<=81;dx+=2) {
+            double radius=Math.hypot(dx,dy);
+            if(radius<48 || radius>79)continue;
+            int x=cx+dx,y=cy+dy;
+            if(x<0||y<0||x>=source.getWidth()||y>=source.getHeight())continue;
+            int rgb=source.getRGB(x,y);
+            int r=(rgb>>>16)&255,g=(rgb>>>8)&255,b=rgb&255;
+            // Reject coins, banners, masonry, greens and dark silhouettes.
+            if(b<r+16 || g<r+14 || b<g-25 || g<110)continue;
+            int side=dy<0?0:1;
+            sums[side][0]+=r;
+            sums[side][1]+=g;
+            sums[side][2]+=b;
+            sums[side][3]++;
+        }
+        int[] result=new int[2];
+        for(int side=0;side<2;side++){
+            if(sums[side][3]<40)throw new IllegalStateException(
+                "Not enough unoccluded sky pixels around Cloud Pass coin");
+            int r=(int)(sums[side][0]/sums[side][3]);
+            int g=(int)(sums[side][1]/sums[side][3]);
+            int b=(int)(sums[side][2]/sums[side][3]);
+            result[side]=(r<<16)|(g<<8)|b;
+        }
+        return result;
+    }
+    private static int coinBackdrop(int[] upDown,CoinCircle coin,int y) {
+        double factor=clamp(.5+(y-coin.centerY)/(coin.radius*2.));
+        int upper=upDown[0],lower=upDown[1];
+        int r=mix((upper>>>16)&255,(lower>>>16)&255,factor);
+        int g=mix((upper>>>8)&255,(lower>>>8)&255,factor);
+        int blue=mix(upper&255,lower&255,factor);
         return (r<<16)|(g<<8)|blue;
     }
-
     private static Color cloudColor(int world,boolean shadow) {
         if(world==5) return shadow?new Color(70,82,179,42):new Color(185,199,255,68);
         if(world==6) return shadow?new Color(255,216,158,55):new Color(255,255,227,85);
@@ -191,6 +214,9 @@ class RebuildWorlds {
         int w=original.getWidth(),h=original.getHeight();
         if(w!=706||h!=1254)throw new IOException("Unexpected art size: "+w+"x"+h);
         BufferedImage air=sky(w,h,world);
+        int[][] coinSky=new int[CLOUD_PASS_COINS.length][];
+        if(world==2)for(int i=0;i<CLOUD_PASS_COINS.length;i++)
+            coinSky[i]=coinSkyColours(original,CLOUD_PASS_COINS[i]);
         BufferedImage output=new BufferedImage(w,h,BufferedImage.TYPE_INT_RGB);
         int preserved=0, sampled=0;
         for(int y=0;y<h;y++)for(int x=0;x<w;x++){
@@ -208,10 +234,10 @@ class RebuildWorlds {
             for(Area a:COINS[world-1])
                 amount=Math.max(amount,a.alpha(x,y,68));
             double coinAlpha=0;
-            CoinCircle coveredCoin=null;
-            if(world==2)for(CoinCircle c:CLOUD_PASS_COINS){
-                double a=c.alpha(x,y,17);
-                if(a>coinAlpha){ coinAlpha=a;coveredCoin=c; }
+            int coveredCoin=-1;
+            if(world==2)for(int i=0;i<CLOUD_PASS_COINS.length;i++){
+                double a=CLOUD_PASS_COINS[i].alpha(x,y,17);
+                if(a>coinAlpha){ coinAlpha=a;coveredCoin=i; }
                 amount=Math.max(amount,a);
             }
             // The retention gate is deliberately in the gameplay strip,
@@ -221,8 +247,8 @@ class RebuildWorlds {
                 if(amount<.08) preserved++;
             }
             int from=original.getRGB(x,y),to=air.getRGB(x,y);
-            if(coveredCoin!=null && coinAlpha>0)
-                to=localCoinBackdrop(original,coveredCoin,x,y);
+            if(coveredCoin>=0 && coinAlpha>0)
+                to=coinBackdrop(coinSky[coveredCoin],CLOUD_PASS_COINS[coveredCoin],y);
             int r=mix((from>>>16)&255,(to>>>16)&255,amount),
                 g=mix((from>>>8)&255,(to>>>8)&255,amount),
                 b=mix(from&255,to&255,amount);
