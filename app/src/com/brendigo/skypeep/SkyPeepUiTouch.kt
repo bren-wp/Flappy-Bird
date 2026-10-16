@@ -59,6 +59,14 @@ internal object SkyPeepUiTouch {
     fun shopBack(x: Float, yTop: Float): Boolean =
         Rect(279f, 1290f, 384f, 137f).contains(x, yTop)
 
+    // Settings rows are painted in SkyPeepGame at y=1010-143*i in
+    // bottom-left coordinates. Keep touch rectangles aligned with those exact
+    // four visible boards, including the new difficulty selector.
+    fun settingsRowAt(x: Float, yTop: Float): Int? =
+        (0..3).firstOrNull { i ->
+            Rect(137f, 543f + 143f * i, 666f, 119f).contains(x, yTop)
+        }
+
     fun settingsBack(x: Float, yTop: Float): Boolean =
         Rect(185f, 1300f, 575f, 129f).contains(x, yTop)
 }
