@@ -6,12 +6,11 @@ import org.junit.Test
 /** All coordinates are top-left oriented, matching the 941x1672 design. */
 class SkyPeepUiTouchTest {
     @Test fun pauseButtonsDoNotOverlapAndGuttersAreInert() {
-        val p = SkyPeepUiTouch.PauseAction
-        assertEquals(p.RESUME, SkyPeepUiTouch.pauseActionAt(470f, 720f))
-        assertEquals(p.RESTART, SkyPeepUiTouch.pauseActionAt(470f, 875f))
-        assertEquals(p.HOME, SkyPeepUiTouch.pauseActionAt(470f, 1040f))
-        assertEquals(p.MUSIC, SkyPeepUiTouch.pauseActionAt(580f, 1180f))
-        assertEquals(p.SFX, SkyPeepUiTouch.pauseActionAt(580f, 1300f))
+        assertEquals(SkyPeepUiTouch.PauseAction.RESUME, SkyPeepUiTouch.pauseActionAt(470f, 720f))
+        assertEquals(SkyPeepUiTouch.PauseAction.RESTART, SkyPeepUiTouch.pauseActionAt(470f, 875f))
+        assertEquals(SkyPeepUiTouch.PauseAction.HOME, SkyPeepUiTouch.pauseActionAt(470f, 1040f))
+        assertEquals(SkyPeepUiTouch.PauseAction.MUSIC, SkyPeepUiTouch.pauseActionAt(580f, 1180f))
+        assertEquals(SkyPeepUiTouch.PauseAction.SFX, SkyPeepUiTouch.pauseActionAt(580f, 1300f))
         for (y in listOf(630f, 800f, 962f, 1120f, 1249f, 1390f)) {
             assertNull("Unexpected pause action at y=$y", SkyPeepUiTouch.pauseActionAt(470f, y))
         }
