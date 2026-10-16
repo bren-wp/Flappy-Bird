@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   android:
@@ -24,6 +24,13 @@ jobs:
           gradle-version: '8.14.3'
       - name: Build APK and unsigned AAB
         run: gradle :app:testDebugUnitTest :app:assembleDebug :app:bundleRelease --stacktrace
+      - name: Verify offline and local-only Android manifest
+        run: |
+          grep -q 'android:allowBackup="false"' app/AndroidManifest.xml
+          grep -q 'android:usesCleartextTraffic="false"' app/AndroidManifest.xml
+          if grep -Eq 'android.permission.(INTERNET|ACCESS_FINE_LOCATION|ACCESS_COARSE_LOCATION|READ_CONTACTS|READ_SMS)' app/AndroidManifest.xml; then
+            echo "Unexpected sensitive Android permission"; exit 1
+          fi
       - name: Verify build outputs
         run: |
           test -s app/build/outputs/apk/debug/app-debug.apk
@@ -105,19 +112,32 @@ jobs:
           path: smoke-results/
           if-no-files-found: warn
 
-      - name: Publish GitHub release after emulator smoke
-        if: github.event_name == 'push' && github.ref == 'refs/heads/fix/skypeep-v0.3.6-result-hitboxes'
+  # Build/test jobs always have READ-ONLY repository permissions. Only a
+  # successful, trusted-branch push obtains an elevated token to publish.
+  release:
+    name: Publish verified preview
+    needs: [android, emulator-smoke]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/fix/skypeep-v0.3.7-production-hardening'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: SkyPeep-Android-${{ github.run_number }}
+          path: release-artifacts
+      - name: Publish APK and unsigned AAB after successful QA
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
-          VERSION="v0.3.6-preview.${GITHUB_RUN_NUMBER}"
-          APK="$(find smoke-artifacts -type f -name 'app-debug.apk' -print -quit)"
-          AAB="$(find smoke-artifacts -type f -name 'app-release.aab' -print -quit)"
-          test -n "$APK" && test -n "$AAB"
+          VERSION="v0.3.7-preview.${GITHUB_RUN_NUMBER}"
+          APK="$(find release-artifacts -type f -name 'app-debug.apk' -print -quit)"
+          AAB="$(find release-artifacts -type f -name 'app-release.aab' -print -quit)"
+          test -s "$APK" && test -s "$AAB"
           gh release create "$VERSION" \
-            "$APK" \
-            "$AAB" \
+            "$APK" "$AAB" \
             --target "$GITHUB_SHA" \
             --title "SkyPeep $VERSION" \
             --prerelease \
-            --notes 'SkyPeep results touch correctness: precise Home/Next/Share target bounds and non-interactive margins, win/loss Android navigation tests, preserving 2D original art. Debug APK is for testing. The AAB is UNSIGNED and cannot be uploaded to Google Play without app signing. Visual and device smoke testing is still required.'
+            --notes '0.3.7: hardened local-only privacy, bounded rewards, safer Android sharing and reduced unused code. Android emulator tested; debug APK and UNSIGNED AAB are not a production Play Store build. Complete 1:1 visual parity and physical-device verification are still outstanding.'

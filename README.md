@@ -37,6 +37,7 @@ Fly through **Sky Start**, **Cloud Pass**, **Crystal Drop**, **Wind Gate**, **Mo
 - 🏛️ Textured 2D stone shafts anchored to both screen boundaries for every illustrated obstacle
 - ☁️ Soft unified cloud layers and distant world-specific mountain silhouettes, with more accurate collectible hitboxes
 - 📤 Share your score through Android
+- 🔐 Offline by design, with no network or location permission; safer local score sharing and resilient progress rewards
 
 ## Android builds
 

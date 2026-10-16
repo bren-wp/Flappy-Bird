@@ -96,7 +96,6 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     private var flapTimer = 0f
     private var readyForFirstTap = false
     private var animationTime = 0f
-    private var elapsed = 0f
     private var nextGate = 1.5f
     private val gates = mutableListOf<Gate>()
     private var message = ""
@@ -109,7 +108,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         viewport.update(Gdx.graphics.width, Gdx.graphics.height, true)
         batch.projectionMatrix = camera.combined
         prefs = Gdx.app.getPreferences("SkyPeepSettingsAndProgress")
-        best = prefs.getInteger("best", 0)
+        best = prefs.getInteger("best", 0).coerceAtLeast(0)
         unlocked = prefs.getInteger("unlocked", 1).coerceIn(1, MAX_LEVEL)
         level = prefs.getInteger("level", 1).coerceIn(1, unlocked)
         coins = prefs.getInteger("coins", 1250).coerceAtLeast(0)
@@ -451,8 +450,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
             save()
             toast(if(purchased.alreadyOwned) "${offer.name} EQUIPPED"
                   else "${offer.name} UNLOCKED")
-            Gdx.app.log("SkyPeepShop",
-                "selected=${offer.name} coins=$coins gems=$gems")
+            // Avoid writing wallet balances into globally accessible diagnostic logs.
+            Gdx.app.log("SkyPeepShop","selected=${offer.name}")
             playSound("win")
             return
         }
@@ -482,7 +481,6 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         score=0
         earnedCoins=0
         resultWon=false
-        elapsed=0f
         nextGate=2.0f
         gates.clear()
         if (qaPillars) gates.add(Gate(W - 300f,1050f))
@@ -503,7 +501,6 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
 
     private fun updateGame(dt: Float) {
         if (readyForFirstTap) return
-        elapsed += dt
         flapTimer = max(0f,flapTimer-dt)
         verticalSpeed = max(-900f, verticalSpeed - 1720f*dt)
         birdY += verticalSpeed *dt
@@ -547,8 +544,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
                 radiusY = 102f
             )) {
                 gate.coinTaken=true
-                coins+=5
-                earnedCoins+=5
+                coins = SkyPeepEconomy.credit(coins,5)
+                earnedCoins = SkyPeepEconomy.credit(earnedCoins,5)
                 playSound("coin")
             }
             // Gems have their own hitbox; collecting a coin must not grant a distant gem.
@@ -562,7 +559,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
                     radiusY = 57f
                 )) {
                 gate.gemTaken=true
-                gems++
+                gems = SkyPeepEconomy.credit(gems,1)
                 playSound("coin")
             }
             if (!gate.scored && gate.x+gateWidth < BIRD_X+40f) {
@@ -581,8 +578,9 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         screen = Screen.RESULT
         best=max(best,score)
         if (won) {
-            coins += FlightRules.winBonus(level)
-            earnedCoins += FlightRules.winBonus(level)
+            val bonus = FlightRules.winBonus(level)
+            coins = SkyPeepEconomy.credit(coins,bonus)
+            earnedCoins = SkyPeepEconomy.credit(earnedCoins,bonus)
             stars[level-1]=3
             unlocked=max(unlocked,min(MAX_LEVEL,level+1))
             playSound("win")
@@ -1012,11 +1010,6 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
 
     private fun label(text:String,x:Float,y:Float,font:BitmapFont) {
         font.draw(batch,text,x,y)
-    }
-
-    private fun centered(text:String,y:Float,font:BitmapFont,centerX:Float=W/2f) {
-        tmp.setText(font,text)
-        font.draw(batch,text,centerX-tmp.width/2,y)
     }
 
     private fun toast(value:String) {
