@@ -54,6 +54,26 @@ class CompareSkyPeepScreens {
         }
         return difference / (double) count;
     }
+    // Sample a fixed, unoccluded illustrated island in Sky Start. The old
+    // overwide pillar mask erased this region despite no bird or pillar being
+    // present there. This is reference-to-real-emulator evidence, not an image.
+    private static double regionMAE(
+        BufferedImage actual, BufferedImage reference,
+        double left, double top, double right, double bottom) {
+        int x0=(int)(left*reference.getWidth());
+        int x1=(int)(right*reference.getWidth());
+        int y0=(int)(top*reference.getHeight());
+        int y1=(int)(bottom*reference.getHeight());
+        long diff=0,count=0;
+        for(int y=y0;y<y1;y+=2)for(int x=x0;x<x1;x+=2){
+            int a=actual.getRGB(x,y),b=reference.getRGB(x,y);
+            for(int shift:new int[]{0,8,16}){
+                diff+=Math.abs(((a>>>shift)&255)-((b>>>shift)&255));
+                count++;
+            }
+        }
+        return diff/(double)Math.max(1,count);
+    }
     public static void main(String[] args) throws Exception {
         Path output = Path.of("smoke-results/visual-comparison.txt");
         StringBuilder report = new StringBuilder();
@@ -71,6 +91,14 @@ class CompareSkyPeepScreens {
                 "%s | MAE=%.2f/255 | screenshot=%dx%d | reference=%dx%d%n",
                 scene[0], error, screenshot.getWidth(), screenshot.getHeight(),
                 reference.getWidth(), reference.getHeight()));
+            if("world-1".equals(scene[0])){
+                double islandError=regionMAE(adjusted,reference,.33,.23,.45,.35);
+                report.append(String.format(java.util.Locale.ROOT,
+                    "sky-start-original-midground-island | ROI MAE=%.2f/255%n",
+                    islandError));
+                // This metric is diagnostic until the revised masks are
+                // verified against the actual emulator capture.
+            }
         }
         // Real Android screenshot guard, not just a generated-asset check.
         // Sample an unobstructed interior point on the winged score face; it

@@ -65,8 +65,8 @@ jobs:
       - name: Verify build outputs
         run: |
           # Guard against a release tag advertising the wrong packaged version.
-          grep -Eq "versionCode[[:space:]]+23" app/build.gradle
-          grep -Fq "versionName '0.3.11'" app/build.gradle
+          grep -Eq "versionCode[[:space:]]+24" app/build.gradle
+          grep -Fq "versionName '0.3.12'" app/build.gradle
           test -s app/build/outputs/apk/debug/app-debug.apk
           test -s app/build/outputs/bundle/release/app-release.aab
           unzip -t app/build/outputs/apk/debug/app-debug.apk > /dev/null
@@ -157,7 +157,7 @@ jobs:
   release:
     name: Publish verified preview
     needs: [android, emulator-smoke]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/feat/skypeep-v0.3.11-sky-routes-difficulty'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/fix/skypeep-v0.3.12-artwork-preservation'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -179,7 +179,7 @@ jobs:
             echo "Skipping stale preview at $GITHUB_SHA; branch head is $current_head"
             exit 0
           fi
-          VERSION="v0.3.11-preview.${GITHUB_RUN_NUMBER}"
+          VERSION="v0.3.12-preview.${GITHUB_RUN_NUMBER}"
           APK="$(find release-artifacts -type f -name 'app-debug.apk' -print -quit)"
           AAB="$(find release-artifacts -type f -name 'app-release.aab' -print -quit)"
           test -s "$APK" && test -s "$AAB"
@@ -190,7 +190,7 @@ jobs:
             --target "$GITHUB_SHA" \
             --title "SkyPeep $VERSION" \
             --draft --prerelease \
-            --notes '0.3.11: introduce three selectable SkyPeep route licenses (18 world/mode challenges), themed sky-current physics, optional precision streak rewards and real 1-3-star scores, independent mode progress with migration of existing Explorer saves, plus a CI dead-code audit. Debug APK installable; AAB UNSIGNED and not ready for Google Play. Complete 1:1 art parity and physical device tests remain outstanding.'
+            --notes '0.3.12: preserve original illustrated floating islands, clouds and mountain scenery in Sky Start/Cloud Pass using precision removal of baked-in HUD/bird/pillars/coins instead of overwide erasure masks. Maintain the original bird source aspect ratio and scalable skin overlay. Add original-midground retention guards and visual QA. Unit, art restoration, APK/AAB and emulator smoke required. APK debug installable; AAB UNSIGNED and not Play-ready. Full 1:1 parity for remaining worlds not yet certified.'
           # A stale draft is never published; delete it and its temporary tag.
           publish_head="$(gh api "repos/$GH_REPO/git/ref/heads/$GITHUB_REF_NAME" --jq '.object.sha')"
           if [[ "$publish_head" != "$GITHUB_SHA" ]]; then

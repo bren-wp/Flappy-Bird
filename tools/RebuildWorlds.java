@@ -13,8 +13,24 @@ import java.nio.file.*;
  * Requires JDK 17 only: no internet, generated chat images or other assets.
  */
 class RebuildWorlds {
-    private record Area(double x1,double y1,double x2,double y2) {
+    /** Soft organic removal shape for a baked bird, cloud or pillar cap. */
+    private interface Region { double alpha(double x,double y,double feather); }
+    private record Oval(double cx,double cy,double rx,double ry) implements Region {
+        public double alpha(double x,double y,double feather) {
+            double nx=(x-cx)/rx,ny=(y-cy)/ry;
+            double signedDistance=(1.0-Math.hypot(nx,ny))*Math.min(rx,ry);
+            return clamp(.5+signedDistance/feather);
+        }
+    }
+    private record CoinCircle(double centerX,double centerY,double radius) {
         double alpha(double x,double y,double feather) {
+            // Feather inside an expanded circle, not across the coin outline:
+            // the full original 30px-radius dark ring is always replaced.
+            return clamp(.5+(radius-Math.hypot(x-centerX,y-centerY))/feather);
+        }
+    }
+    private record Area(double x1,double y1,double x2,double y2) implements Region {
+        public double alpha(double x,double y,double feather) {
             double inside=Math.min(Math.min(x-x1,x2-x),Math.min(y-y1,y2-y));
             if(x>=x1&&x<=x2&&y>=y1&&y<=y2) return clamp(.5+inside/feather);
             double dx=Math.max(Math.max(x1-x,x-x2),0);
@@ -32,20 +48,95 @@ class RebuildWorlds {
       {{255,157,98},{255,198,91},{255,221,115},{255,238,186}}
     };
     // 706 x 1254 world assets, with original artwork coordinates.
-    private static final Area[][] MASKS = {
-      {new Area(0,0,706,210),new Area(238,115,551,520),new Area(-20,433,574,765),new Area(220,698,574,1280)},
-      {new Area(0,0,706,212),new Area(244,110,556,525),new Area(-20,429,606,771),new Area(238,707,587,1280)},
+    private static final Region[][] MASKS = {
+      // World 1-2: mask ONLY the photographed HUD, baked-in character,
+      // motion streaks and fixed stone pillars. The older huge rectangles
+      // erased real illustrated islands, mountains and clouds at mid-screen.
+      // These source-pixel-space regions retain far more original scenery.
+      {new Area(0,0,706,185),
+       // Original top stone shaft with a separate irregular leafy lower cap.
+       new Area(346,116,534,451),new Oval(439,468,145,105),
+       // Original bird/scarf and speed streaks: erase elliptical silhouettes,
+       // retaining nearby natural island and mountain pixels.
+       new Oval(235,585,158,120),new Oval(60,629,137,70),
+       // The original sky-start top pillar also carried a long fixed green
+       // horizontal tail above the bird, visible in previous screenshots.
+       new Oval(166,477,205,65),
+       // The bottom post reaches the screen edge; soft rounded top avoids
+       // the former horizontal horizon-size rectangle seam.
+       new Oval(437,754,110,88),new Area(346,775,534,1280)},
+      {new Area(0,0,706,185),
+       new Area(309,147,532,448),new Oval(410,489,150,106),
+       // A narrow overlapping plume is part of the fixed photograph.
+       new Oval(273,539,77,54),
+       new Oval(207,670,137,103),new Oval(51,685,113,58),
+       // Cloud Pass also has a photographed horizontal pale tail immediately
+       // above the fixed bottom pillar. Erase its full left extension without
+       // introducing a rectangle-shaped edge through the midground islands.
+       new Oval(127,764,218,52),
+       new Oval(409,839,128,80),new Area(311,851,536,1280),
+       new Oval(406,956,139,88)},
       {new Area(0,0,706,207),new Area(234,110,584,533),new Area(-20,421,612,773),new Area(223,703,591,1280)},
       {new Area(0,0,706,216),new Area(194,105,651,533),new Area(-20,424,687,771),new Area(223,697,590,1280),new Area(594,642,746,1100)},
       {new Area(0,0,706,207),new Area(233,103,580,528),new Area(-20,418,618,774),new Area(219,695,591,1280)},
       {new Area(0,0,706,210),new Area(277,106,574,534),new Area(-20,418,618,774),new Area(251,700,586,1280)}
     };
     private static final Area[][] COINS = {
-      {}, {new Area(448,562,691,772)}, {},
+      {}, {}, {},
       {new Area(393,553,689,721)},
       {new Area(339,560,694,751)}, {}
     };
+    // Original three Cloud Pass coin outlines: from actual source art at
+    // 864x1536 then mapped to the verified 706x1254 build texture.
+    private static final CoinCircle[] CLOUD_PASS_COINS={
+        new CoinCircle(498.5,622.0,43.0),
+        new CoinCircle(443.8,678.7,43.0),
+        new CoinCircle(390.0,733.4,43.0)
+    };
     private static int mix(int a,int b,double t){return (int)Math.round(a+(b-a)*t);}
+    /**
+     * Small removed coins use the real scene's nearby BLUE sky samples,
+     * never a scanline running through the neighboring photographed coin.
+     * Excluding yellow outlines and averaging an annulus prevents stripes.
+     * Upper and lower samples preserve the local vertical colour gradient.
+     */
+    private static int[] coinSkyColours(BufferedImage source,CoinCircle coin) {
+        long[][] sums=new long[2][4];
+        int cx=(int)Math.round(coin.centerX),cy=(int)Math.round(coin.centerY);
+        for(int dy=-81;dy<=81;dy+=2)for(int dx=-81;dx<=81;dx+=2) {
+            double radius=Math.hypot(dx,dy);
+            if(radius<48 || radius>79)continue;
+            int x=cx+dx,y=cy+dy;
+            if(x<0||y<0||x>=source.getWidth()||y>=source.getHeight())continue;
+            int rgb=source.getRGB(x,y);
+            int r=(rgb>>>16)&255,g=(rgb>>>8)&255,b=rgb&255;
+            // Reject coins, banners, masonry, greens and dark silhouettes.
+            if(b<r+16 || g<r+14 || b<g-25 || g<110)continue;
+            int side=dy<0?0:1;
+            sums[side][0]+=r;
+            sums[side][1]+=g;
+            sums[side][2]+=b;
+            sums[side][3]++;
+        }
+        int[] result=new int[2];
+        for(int side=0;side<2;side++){
+            if(sums[side][3]<40)throw new IllegalStateException(
+                "Not enough unoccluded sky pixels around Cloud Pass coin");
+            int r=(int)(sums[side][0]/sums[side][3]);
+            int g=(int)(sums[side][1]/sums[side][3]);
+            int b=(int)(sums[side][2]/sums[side][3]);
+            result[side]=(r<<16)|(g<<8)|b;
+        }
+        return result;
+    }
+    private static int coinBackdrop(int[] upDown,CoinCircle coin,int y) {
+        double factor=clamp(.5+(y-coin.centerY)/(coin.radius*2.));
+        int upper=upDown[0],lower=upDown[1];
+        int r=mix((upper>>>16)&255,(lower>>>16)&255,factor);
+        int g=mix((upper>>>8)&255,(lower>>>8)&255,factor);
+        int blue=mix(upper&255,lower&255,factor);
+        return (r<<16)|(g<<8)|blue;
+    }
     private static Color cloudColor(int world,boolean shadow) {
         if(world==5) return shadow?new Color(70,82,179,42):new Color(185,199,255,68);
         if(world==6) return shadow?new Color(255,216,158,55):new Color(255,255,227,85);
@@ -126,17 +217,61 @@ class RebuildWorlds {
         if(original==null)throw new IOException("Unreadable SkyPeep artwork: "+file);
         int w=original.getWidth(),h=original.getHeight();
         if(w!=706||h!=1254)throw new IOException("Unexpected art size: "+w+"x"+h);
+        if(world==1){
+            // The outer dark bottom rim of the original baked-in pillar spans
+            // x≈350..535 around source y=525. Erase it completely so it
+            // cannot appear stationary beneath the moving pillar sprite.
+            for(int x:new int[]{350,535})
+                if(MASKS[0][2].alpha(x,525,27)<.99)
+                    throw new IOException("Sky Start fixed-pillar rim leaked: x="+x);
+        }
         BufferedImage air=sky(w,h,world);
+        int[][] coinSky=new int[CLOUD_PASS_COINS.length][];
+        if(world==2)for(int i=0;i<CLOUD_PASS_COINS.length;i++)
+            coinSky[i]=coinSkyColours(original,CLOUD_PASS_COINS[i]);
         BufferedImage output=new BufferedImage(w,h,BufferedImage.TYPE_INT_RGB);
+        int preserved=0, sampled=0;
         for(int y=0;y<h;y++)for(int x=0;x<w;x++){
             double amount=0;
-            for(Area a:MASKS[world-1]) amount=Math.max(amount,a.alpha(x,y,92));
-            for(Area a:COINS[world-1]) amount=Math.max(amount,a.alpha(x,y,68));
+            // An 18px feather removes visible rectangular mask edges without
+            // bleeding 90+ pixels into valuable original illustrated scenery.
+            // Worlds 3-6 retain their proven legacy mask/feather geometry here.
+            for(int mask=0;mask<MASKS[world-1].length;mask++){
+                Region shape=MASKS[world-1][mask];
+                // Header replacement spans the whole width and needs a
+                // broad fade to avoid a sharp horizontal cut across clouds.
+                double feather=(world<=2)?(mask==0?72:27):92;
+                amount=Math.max(amount,shape.alpha(x,y,feather));
+            }
+            for(Area a:COINS[world-1])
+                amount=Math.max(amount,a.alpha(x,y,68));
+            double coinAlpha=0;
+            int coveredCoin=-1;
+            if(world==2)for(int i=0;i<CLOUD_PASS_COINS.length;i++){
+                double a=CLOUD_PASS_COINS[i].alpha(x,y,17);
+                if(a>coinAlpha){ coinAlpha=a;coveredCoin=i; }
+                amount=Math.max(amount,a);
+            }
+            // The retention gate is deliberately in the gameplay strip,
+            // excluding the source screenshot's static top HUD and bottom UI.
+            if(world<=2 && x%4==0 && y%4==0 && y>=210 && y<1100){
+                sampled++;
+                if(amount<.08) preserved++;
+            }
             int from=original.getRGB(x,y),to=air.getRGB(x,y);
+            if(coveredCoin>=0 && coinAlpha>0)
+                to=coinBackdrop(coinSky[coveredCoin],CLOUD_PASS_COINS[coveredCoin],y);
             int r=mix((from>>>16)&255,(to>>>16)&255,amount),
                 g=mix((from>>>8)&255,(to>>>8)&255,amount),
                 b=mix(from&255,to&255,amount);
             output.setRGB(x,y,(r<<16)|(g<<8)|b);
+        }
+        if(world<=2){
+            double fraction=preserved/(double)Math.max(1,sampled);
+            System.out.printf("SkyPeep world %d: %.1f%% original midground retained%n",
+                world,fraction*100.0);
+            if(fraction<.49)throw new IOException(
+                "Illustrated scene lost too much original detail in world "+world);
         }
         ImageWriter writer=ImageIO.getImageWritersByFormatName("jpeg").next();
         try(OutputStream o=Files.newOutputStream(file);
