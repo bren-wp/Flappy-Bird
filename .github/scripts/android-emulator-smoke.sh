@@ -367,6 +367,10 @@ done
 adb shell wm size "$baseline_size"
 w="${baseline_size%x*}"
 h="${baseline_size#*x}"
-
+java -Djava.awt.headless=true tools/ResponsiveViewportQa.java
+test -s smoke-results/responsive-viewport-audit.txt || {
+  echo "FAIL: responsive screenshot audit was not produced"; exit 1;
+}
+echo "PASS: three actual Android aspect ratios preserve SkyPeep UI and fill display."
 
 echo "PASS: Android app process survives boot and splash navigation."
