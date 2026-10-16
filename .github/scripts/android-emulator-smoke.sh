@@ -229,4 +229,34 @@ if [[ "$next" != *"screen=PLAY"* ]]; then
   echo "FAIL: NEXT from victory didn't open gameplay: $next"; exit 1;
 fi
 echo "PASS: victory scene and NEXT action."
+# Regression for formerly oversized invisible RESULT hitboxes.
+# Victory illustration draws Home/Next/Share at y=1308..1465 (top-left);
+# GAME OVER reference draws them at about y=1240..1435.
+adb logcat -c
+adb shell am force-stop com.brendigo.skypeep
+adb shell am start -W --ei sky_peep_qa_world 1 --ez sky_peep_qa_victory true \
+  -n com.brendigo.skypeep/.MainActivity
+capture victory-touch-before RESULT
+tap_ui 320 1380
+capture victory-gap RESULT
+tap_ui 470 1210
+capture victory-above RESULT
+tap_ui 185 1380
+capture victory-home MENU
+
+adb logcat -c
+adb shell am force-stop com.brendigo.skypeep
+adb shell am start -W --ei sky_peep_qa_world 1 --ez sky_peep_qa_loss true \
+  -n com.brendigo.skypeep/.MainActivity
+capture loss-before RESULT
+tap_ui 470 1210
+capture loss-above RESULT
+tap_ui 470 1490
+capture loss-below RESULT
+tap_ui 320 1380
+capture loss-gutter RESULT
+tap_ui 470 1380
+capture loss-retry PLAY
+echo "PASS: accurate result buttons and inert margins, HOME and loss RETRY."
+
 echo "PASS: Android app process survives boot and splash navigation."
