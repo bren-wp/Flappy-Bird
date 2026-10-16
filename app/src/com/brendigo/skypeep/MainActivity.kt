@@ -1,6 +1,8 @@
 package com.brendigo.skypeep
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.widget.Toast
 import android.content.pm.ApplicationInfo
 import android.os.Bundle
 import com.badlogic.gdx.backends.android.AndroidApplication
@@ -22,11 +24,17 @@ class MainActivity : AndroidApplication() {
         val qaLoss = if (debuggable) intent.getBooleanExtra("sky_peep_qa_loss", false) else false
         initialize(SkyPeepGame(shareText = { result ->
             runOnUiThread {
-                val intent = Intent(Intent.ACTION_SEND).apply {
+                // Android may destroy the activity while the system chooser opens.
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                val shareIntent = Intent(Intent.ACTION_SEND).apply {
                     type = "text/plain"
                     putExtra(Intent.EXTRA_TEXT, result)
                 }
-                startActivity(Intent.createChooser(intent, "Share SkyPeep score"))
+                try {
+                    startActivity(Intent.createChooser(shareIntent, "Share SkyPeep score"))
+                } catch (_: ActivityNotFoundException) {
+                    Toast.makeText(this, "No sharing app available", Toast.LENGTH_SHORT).show()
+                }
             }
         }, qaWorld = qaWorld, qaSkin = qaSkin,
             qaVictory = qaVictory, qaPillars = qaPillars,
