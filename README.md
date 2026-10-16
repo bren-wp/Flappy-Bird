@@ -10,7 +10,19 @@ A vivid 2D Android arcade adventure with floating islands, enchanted ruins, glow
 
 </div>
 
+## Sky Route adventures — 18 challenges
+
+Choose a flight license in **Settings → Difficulty** and master all six worlds:
+
+- **Breeze:** wider sky corridors, gentler gravity and longer flights to practise the route.
+- **Explorer:** the classic SkyPeep difficulty and default for existing installs; older world unlocks and scores stay intact.
+- **Tempest:** stronger winds, faster scenery and narrower precision routes with higher completion rewards.
+
+Each world has its own air-current profile. Aim for the **centre of the opening** to build precision streaks: every third precise passage awards an optional coin bonus, while a completed route earns one to three stars based on flight accuracy. Records and earned stars are tracked separately for each license, so there are **6 worlds × 3 routes = 18 challenges** without overwriting existing progress. There are no purchases or network services required to access difficulty modes.
+
 ## Explore the sky
+
+The pictures below are the **user-provided design references**, not substitute screenshots from an Android emulator. Actual emulator captures and logs are downloadable from the Android CI run's `SkyPeep-Emulator-Smoke-*` artifact.
 
 | Home | Six worlds | Your bird |
 |:---:|:---:|:---:|
@@ -20,6 +32,8 @@ Fly through **Sky Start**, **Cloud Pass**, **Crystal Drop**, **Wind Gate**, **Mo
 
 ### What is inside
 
+- 🌬️ Three selectable Sky Route flight licenses with world-specific currents and 18 challenge variants
+- 🧭 Optional precision-centre streaks, skill-based one-to-three-star victories and independent mode records
 - 🎮 Responsive touch-to-flap flight and score progression
 - 🗺️ Six themed levels with stars and unlocks
 - 🐦 Three-frame character flight animation with distinct Captain, Forest, Cosmic and Royal 2D costumes
@@ -38,6 +52,10 @@ Fly through **Sky Start**, **Cloud Pass**, **Crystal Drop**, **Wind Gate**, **Mo
 - ☁️ Soft unified cloud layers and distant world-specific mountain silhouettes, with more accurate collectible hitboxes
 - 📤 Share your score through Android
 - 🔐 Offline by design, with no network or location permission; safer local score sharing and resilient progress rewards
+
+## Android builds and quality assurance
+
+CI runs Gradle unit tests, restores and validates the six-world artwork, checks Android permissions and native ABIs, executes a Kotlin/Java dead-code audit, and captures real Android emulator screenshots including difficulty selection and cold-restart persistence. A successful Gradle compile alone is not treated as proof of game readiness.
 
 ## Android builds
 

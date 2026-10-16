@@ -25,7 +25,6 @@ import com.badlogic.gdx.utils.viewport.FitViewport
 import java.util.Locale
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.sqrt
 
 /** All locations refer to the original 941x1672 portrait artwork. No scrolling. */
 class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
@@ -36,7 +35,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
                   private val qaScore: Int = -1,
                   private val qaMapUnlocked: Int = -1,
                   private val qaLoss: Boolean = false,
-                  private val qaBackgroundMotion: Boolean = false) : ApplicationAdapter() {
+                  private val qaBackgroundMotion: Boolean = false,
+                  private val qaDifficulty: Int = -1) : ApplicationAdapter() {
     companion object {
         private const val W = 941f
         private const val H = 1672f
@@ -89,6 +89,14 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     private var selectedSkin = 0
     private val ownedSkins = BooleanArray(5)
     private val stars = IntArray(MAX_LEVEL)
+    // Route progress is independent for BREEZE, EXPLORER and TEMPEST.
+    // Existing stars and global best remain intact for save compatibility.
+    private var difficulty = SkyDifficulty.EXPLORER
+    private val routeStars = Array(SkyDifficulty.entries.size) { IntArray(MAX_LEVEL) }
+    private val routeBests = IntArray(SkyDifficulty.entries.size)
+    private var precisionPasses = 0
+    private var precisionStreak = 0
+    private var earnedStars = 0
     private var musicEnabled = true
     private var effectsEnabled = true
     private var vibrationEnabled = false
@@ -100,6 +108,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     // Separate motion clock freezes scenery when paused or in a menu.
     private var flightBackgroundTime = 0f
     private var lastBackgroundLogSecond = -1
+    private var lastPhysicsLogSample = -1
     private var nextGate = 1.5f
     private val gates = mutableListOf<Gate>()
     private var message = ""
@@ -125,6 +134,22 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         for (i in 1..4) ownedSkins[i] = prefs.getBoolean("owned_$i", false)
         if (!ownedSkins[selectedSkin]) selectedSkin = 0
         for (i in 0 until MAX_LEVEL) stars[i] = prefs.getInteger("stars_${i+1}", 0).coerceIn(0, 3)
+        difficulty = SkyDifficulty.fromStored(
+            prefs.getInteger("difficulty", SkyDifficulty.EXPLORER.ordinal))
+        for (mode in SkyDifficulty.entries) {
+            routeBests[mode.ordinal] = prefs.getInteger(
+                "route_best_${mode.ordinal}",
+                if (mode == SkyDifficulty.EXPLORER) best else 0).coerceAtLeast(0)
+            for (i in 0 until MAX_LEVEL) {
+                val fallback = if (mode == SkyDifficulty.EXPLORER) stars[i] else 0
+                routeStars[mode.ordinal][i] = prefs.getInteger(
+                    "route_stars_${mode.ordinal}_${i+1}", fallback).coerceIn(0, 3)
+            }
+        }
+        // QA may select a different license but never opens locked worlds in release APKs.
+        if (qaDifficulty in SkyDifficulty.entries.indices)
+            difficulty = SkyDifficulty.fromStored(qaDifficulty)
+        Gdx.app.log("SkyPeepDifficulty", "loaded=${difficulty.title}")
         ownedTrails[0] = true
         for (i in 1..3) ownedTrails[i] = prefs.getBoolean("trail_owned_$i",false)
         selectedTrail = prefs.getInteger("trail_selected",0).coerceIn(0,3)
@@ -169,8 +194,10 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
             // never be shown as completed before its first successful flight.
             unlocked = qaMapUnlocked
             level = qaMapUnlocked
-            for (i in 0 until MAX_LEVEL)
+            for (i in 0 until MAX_LEVEL) {
                 stars[i] = if (i < unlocked - 1) 3 else 0
+                routeStars[difficulty.ordinal][i] = stars[i]
+            }
             screen = Screen.MAP
             Gdx.app.log("SkyPeepMap","map_loaded unlocked=$unlocked selected=$level")
         }
@@ -386,7 +413,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
             }
             SkyPeepResultTouch.Action.SHARE -> {
                 playSound("click")
-                val msg = "SkyPeep | ${levelTitle(level)} | Score $score | Best $best"
+                val msg = "SkyPeep | ${levelTitle(level)} | ${difficulty.title} | Score $score | Best ${routeBests[difficulty.ordinal]}"
                 if (shareText != null) shareText.invoke(msg)
                 else Gdx.app.clipboard.contents = msg
                 toast("SHARE RESULT")
@@ -461,13 +488,26 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     }
 
     private fun clickSettings(x: Float, y: Float) {
+        if (SkyPeepUiTouch.settingsBack(x,y)) {
+            playSound("click")
+            screen=Screen.MENU
+            save()
+            return
+        }
+        // Non-interactive gutters stay silent, and the visible fourth row
+        // alone cycles the player's route license.
+        val row = SkyPeepUiTouch.settingsRowAt(x,y) ?: return
         playSound("click")
-        when {
-            SkyPeepUiTouch.settingsBack(x,y) -> { screen=Screen.MENU; save() }
-            hit(x,y,120f,555f,710f,118f) -> setMusic(!musicEnabled)
-            hit(x,y,120f,698f,710f,117f) -> { effectsEnabled=!effectsEnabled; save() }
-            hit(x,y,120f,840f,710f,120f) -> { vibrationEnabled=!vibrationEnabled; save() }
-            hit(x,y,120f,980f,710f,127f) -> { toast("LANGUAGE: ENGLISH") }
+        when (row) {
+            0 -> setMusic(!musicEnabled)
+            1 -> { effectsEnabled=!effectsEnabled; save() }
+            2 -> { vibrationEnabled=!vibrationEnabled; save() }
+            3 -> {
+                difficulty = difficulty.next()
+                save()
+                toast("SKY ROUTE: ${difficulty.title}")
+                Gdx.app.log("SkyPeepDifficulty","selected=${difficulty.title}")
+            }
         }
     }
 
@@ -484,6 +524,9 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         score=0
         earnedCoins=0
         resultWon=false
+        precisionPasses=0
+        precisionStreak=0
+        earnedStars=0
         nextGate=2.0f
         gates.clear()
         if (qaPillars) gates.add(Gate(W - 300f,1050f))
@@ -493,6 +536,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         animationTime=0f
         flightBackgroundTime=0f
         lastBackgroundLogSecond=-1
+        lastPhysicsLogSample=-1
         readyForFirstTap=true
         save()
     }
@@ -510,14 +554,31 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         if (qaBackgroundMotion && qaWorld in 1..MAX_LEVEL) return
         if (readyForFirstTap) return
         flapTimer = max(0f,flapTimer-dt)
-        verticalSpeed = max(-900f, verticalSpeed - 1720f*dt)
-        birdY += verticalSpeed *dt
+        val gravity=SkyRouteRules.gravity(difficulty)
+        val skyCurrent=SkyRouteRules.windAcceleration(level,difficulty,flightBackgroundTime)
+        // Debug-only real-physics QA: log while a live flight updates, never
+        // during the frozen-background visual screenshot fixture.
+        if (qaDifficulty >= 0 && qaWorld in 1..MAX_LEVEL) {
+            val sample=(flightBackgroundTime * 5f).toInt()
+            if(sample!=lastPhysicsLogSample) {
+                lastPhysicsLogSample=sample
+                Gdx.app.log("SkyPeepPhysics",
+                    "world=$level mode=${difficulty.title} wind=${skyCurrent.toInt()} " +
+                    "gravity=${gravity.toInt()} gap=${SkyRouteRules.gap(level,difficulty).toInt()} " +
+                    "speed=${SkyRouteRules.speed(level,difficulty).toInt()}")
+            }
+        }
+        // Preserve Explorer's original -900 px/s terminal velocity, while
+        // making Breeze gentler and Tempest's descent more demanding.
+        verticalSpeed = max(-900f * difficulty.gravityFactor,
+            verticalSpeed + (skyCurrent - gravity)*dt)
+        birdY += verticalSpeed * dt
         if (birdY < 38f || birdY + BIRD_H > H - 205f) { finish(false); return }
-        val gap = FlightRules.gap(level)
-        val moveSpeed = 235f + (level-1)*22f
+        val gap = SkyRouteRules.gap(level,difficulty)
+        val moveSpeed = SkyRouteRules.speed(level,difficulty)
         nextGate -= dt
         if (nextGate <= 0f) {
-            nextGate= max(1.38f, 2.25f-(level-1)*.11f)
+            nextGate=SkyRouteRules.spawnSeconds(level,difficulty)
             val center = MathUtils.random(570f,1110f)
             gates.add(Gate(W+80f,center,gem=(score>0 && MathUtils.random(0,9)==0)))
         }
@@ -574,22 +635,42 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
                 gate.scored=true
                 score++
                 best=max(best,score)
+                routeBests[difficulty.ordinal]=max(routeBests[difficulty.ordinal],score)
+                // Precision routes reward keeping SkyPeep on the centreline.
+                // This gives each world an optional skill challenge beyond
+                // merely passing the obstacles, without forcing microtransactions.
+                val precise=SkyRouteRules.isPrecisionPass(
+                    birdY+BIRD_H*.5f,gate.centerY,gap)
+                if (precise) {
+                    precisionPasses++
+                    precisionStreak++
+                    val reward=SkyRouteRules.precisionReward(precisionStreak)
+                    if(reward>0) {
+                        coins=SkyPeepEconomy.credit(coins,reward)
+                        earnedCoins=SkyPeepEconomy.credit(earnedCoins,reward)
+                        playSound("coin")
+                    }
+                } else precisionStreak=0
                 if (score >= targetScore()) { finish(true); return }
             }
             if (gate.x < -400f) iterator.remove()
         }
     }
 
-    private fun targetScore() = FlightRules.targetScore(level)
+    private fun targetScore() = SkyRouteRules.target(level,difficulty)
     private fun finish(won: Boolean) {
         resultWon = won
         screen = Screen.RESULT
         best=max(best,score)
+        routeBests[difficulty.ordinal]=max(routeBests[difficulty.ordinal],score)
         if (won) {
-            val bonus = FlightRules.winBonus(level)
+            val bonus = SkyRouteRules.completionBonus(level,difficulty)
             coins = SkyPeepEconomy.credit(coins,bonus)
             earnedCoins = SkyPeepEconomy.credit(earnedCoins,bonus)
-            stars[level-1]=3
+            earnedStars=SkyRouteRules.starsOnCompletion(precisionPasses,score)
+            routeStars[difficulty.ordinal][level-1]=max(
+                routeStars[difficulty.ordinal][level-1],earnedStars)
+            stars[level-1]=max(stars[level-1],earnedStars)
             unlocked=max(unlocked,min(MAX_LEVEL,level+1))
             playSound("win")
         } else {
@@ -616,7 +697,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
             batch.draw(background,0f,0f,W,H,
                 crop.sourceX,0,crop.sourceWidth,background.height,false,false)
         }
-        val gap = FlightRules.gap(level)
+        val gap = SkyRouteRules.gap(level,difficulty)
         for (gate in gates) {
             val top = pictures["pillar_${level}_top"]!!
             val bottom = pictures["pillar_${level}_bottom"]!!
@@ -643,6 +724,11 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         drawFlightTrail()
         drawBird()
         drawHUD()
+        if (precisionStreak >= 2) {
+            fitted("SKY ROUTE x$precisionStreak",
+                (birdY+BIRD_H+30f).coerceAtMost(H-235f),
+                fontSmall,.80f,245f,BIRD_X+BIRD_W*.5f)
+        }
         if (readyForFirstTap) {
             badge("dark",290f,355f,360f,88f)
             fitted("TAP TO FLY",412f,fontSmall,1.5f,331f)
@@ -762,20 +848,24 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     }
 
     private fun drawMapProgress() {
+        // A compact route tag fills the existing gap between BACK and PLAY;
+        // the six island illustrations and their layout remain untouched.
+        fitted("${difficulty.title} ROUTE",92f,fontSmall,.78f,295f,365f)
         // Locked icons in the original supplied map stay intact. Open and
         // completed islands use different statuses and earned real stars.
         for(world in 1..MAX_LEVEL) {
             if (world > unlocked) continue
             val marker=SkyPeepMapLayout.marker(world)
             if(world>1) {
-                val cleared=SkyPeepMapProgress.status(world,unlocked,stars[world-1]) ==
+                val cleared=SkyPeepMapProgress.status(
+                    world,unlocked,routeStars[difficulty.ordinal][world-1]) ==
                     MapWorldStatus.COMPLETED
                 badge(if(cleared)"green" else "blue",
                     marker.x-58f,H-marker.y-35f,116f,70f)
                 fitted(if(cleared)"CLEAR" else "OPEN",H-marker.y+17f,
                     fontSmall,1.03f,112f,marker.x)
             }
-            val earned=stars[world-1].coerceIn(0,3)
+            val earned=routeStars[difficulty.ordinal][world-1].coerceIn(0,3)
             if(earned>0) {
                 val starRow=SkyPeepMapLayout.starRow(world)
                 for(i in 0 until earned) victoryStar?.let { star ->
@@ -803,9 +893,13 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         badge("wood",120f,1180f,701f,155f)
         fitted("LEVEL COMPLETE",1284f,fontLarge,1.32f,644f)
         fitted(levelTitle(level).uppercase(Locale.ROOT),1190f,fontSmall,1.55f,580f)
-        // Three individually rendered gold stars, as awarded on completion.
+        fitted(difficulty.title,1155f,fontSmall,.90f,220f)
+        // A genuine three-star rating based on how accurately the player
+        // navigated each sky route, not an unconditional triple gold reward.
         for (i in 0..2) victoryStar?.let {
+            if(i >= earnedStars) batch.color=Color(.38f,.44f,.56f,.85f)
             batch.draw(it,291f+i*120f,1009f,115f,115f)
+            batch.color=Color.WHITE
         }
         badge("cream",99f,448f,743f,551f)
         fitted("FLIGHT COMPLETED",924f,fontSmall,1.55f,675f,W/2f,Color.valueOf("6B3D26"))
@@ -814,7 +908,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         fitted("SCORE",826f,fontSmall,1.30f,275f,294f)
         fitted("BEST",826f,fontSmall,1.30f,275f,648f)
         fitted(score.toString(),781f,fontLarge,1.12f,272f,294f)
-        fitted(best.toString(),781f,fontLarge,1.12f,272f,648f)
+        fitted(routeBests[difficulty.ordinal].toString(),781f,fontLarge,1.12f,272f,648f)
         badge("wood",137f,508f,666f,156f)
         fitted("COINS EARNED",643f,fontSmall,1.45f,608f)
         fitted("+$earnedCoins",586f,fontLarge,1.1f,608f)
@@ -839,7 +933,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         badge("cream",402f,H-947f,160f,90f)
         badge("cream",665f,H-947f,122f,90f)
         fitted(score.toString(),H-874f,fontLarge,1f,142f,277f,Color.valueOf("673A22"))
-        fitted(best.toString(),H-874f,fontLarge,1f,148f,483f,Color.valueOf("673A22"))
+        fitted(routeBests[difficulty.ordinal].toString(),H-874f,fontLarge,1f,148f,483f,Color.valueOf("673A22"))
         fitted(earnedCoins.toString(),H-874f,fontLarge,1f,112f,726f,Color.valueOf("673A22"))
         val progress = min(1f,score.toFloat()/targetScore())
         badge("dark",293f,H-1100f,463f,57f)
@@ -928,7 +1022,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         badge("cream",91f,348f,759f,1020f)
         badge("wood",132f,1214f,677f,139f)
         fitted("SETTINGS",1340f,fontLarge,1.55f,627f)
-        val names=arrayOf("MUSIC","SOUND EFFECTS","VIBRATION","LANGUAGE")
+        val names=arrayOf("MUSIC","SOUND EFFECTS","VIBRATION","DIFFICULTY")
         for(i in names.indices) {
             val yy=1010f-i*143f
             badge("wood",137f,yy,666f,119f)
@@ -939,10 +1033,10 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
                     1 -> effectsEnabled
                     else -> vibrationEnabled
                 })
-            } else fitted("ENGLISH",yy+77f,fontSmall,1.1f,124f,715f)
+            } else fitted(difficulty.title,yy+77f,fontSmall,.90f,214f,686f)
         }
         badge("blue",137f,421f,310f,116f)
-        fitted("BEST " + best,494f,fontSmall,1.4f,285f,292f)
+        fitted("BEST " + routeBests[difficulty.ordinal],494f,fontSmall,1.1f,285f,292f)
         badge("green",492f,421f,313f,116f)
         fitted("WORLDS " + unlocked + "/6",494f,fontSmall,1.3f,290f,649f)
         badge("green",185f,243f,575f,129f)
@@ -983,7 +1077,6 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     private fun prepareChrome() {
         val palette=mapOf(
             "dark" to Color.valueOf("103963"),
-            "score" to Color.valueOf("1B8FDC"),
             "green" to Color.valueOf("48C62D"),
             "cream" to Color.valueOf("F6E4C4"),
             "wood" to Color.valueOf("92552F"),
@@ -1065,6 +1158,13 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     }
     private fun save() {
         prefs.putInteger("best",best)
+        prefs.putInteger("difficulty",difficulty.ordinal)
+        for (mode in SkyDifficulty.entries) {
+            prefs.putInteger("route_best_${mode.ordinal}",routeBests[mode.ordinal])
+            for (i in 0 until MAX_LEVEL)
+                prefs.putInteger("route_stars_${mode.ordinal}_${i+1}",
+                    routeStars[mode.ordinal][i])
+        }
         prefs.putInteger("unlocked",unlocked)
         prefs.putInteger("level",level)
         prefs.putInteger("coins",coins)

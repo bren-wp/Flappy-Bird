@@ -287,4 +287,55 @@ java -Djava.awt.headless=true tools/CompareSkyPeepScreens.java
 test -s smoke-results/visual-comparison.txt || {
   echo "FAIL: screenshot visual comparison report missing"; exit 1;
 }
+# SkyPeep now has three independent route licenses in Settings. Validate real
+# taps, visible controls, saved selection and an actual process restart.
+adb shell pm clear com.brendigo.skypeep >/dev/null
+adb logcat -c
+adb shell am start -W -n com.brendigo.skypeep/.MainActivity
+sleep 5
+adb logcat -d -s SkyPeepDifficulty:I '*:S' | grep -q 'loaded=EXPLORER' || {
+  echo "FAIL: new installation did not default to original Explorer mode"; exit 1;
+}
+tap_ui 470 1300
+capture route-main MENU
+tap_ui 650 1400
+capture route-settings SETTINGS
+tap_ui 695 1040
+capture route-tempest SETTINGS
+adb logcat -d -s SkyPeepDifficulty:I '*:S' | grep -q 'selected=TEMPEST' || {
+  echo "FAIL: difficulty selector not activated"; exit 1;
+}
+adb shell am force-stop com.brendigo.skypeep
+adb logcat -c
+adb shell am start -W -n com.brendigo.skypeep/.MainActivity
+sleep 4
+adb logcat -d -s SkyPeepDifficulty:I '*:S' | grep -q 'loaded=TEMPEST' || {
+  echo "FAIL: difficulty was not persisted across cold restart"; exit 1;
+}
+# Android QA extras are ignored by non-debuggable production builds.
+adb shell am force-stop com.brendigo.skypeep
+adb logcat -c
+adb shell am start -W --ei sky_peep_qa_world 4 \
+  --ei sky_peep_qa_difficulty 2 \
+  -n com.brendigo.skypeep/.MainActivity
+capture route-wind-gate PLAY
+adb logcat -d -s SkyPeepDifficulty:I '*:S' | grep -q 'loaded=TEMPEST' || {
+  echo "FAIL: Wind Gate did not start in the selected Tempest license"; exit 1;
+}
+# Actually start a live flight. The frozen background QA flag is intentionally
+# omitted: the standard updateGame() must evaluate gravity, wind and speed.
+tap_ui 475 850
+sleep 1
+physics="$(adb logcat -d -s SkyPeepPhysics:I '*:S' | grep 'world=4 mode=TEMPEST' || true)"
+if [[ -z "$physics" ]] || ! grep -Eq 'wind=-?[1-9][0-9]*' <<< "$physics"; then
+  echo "FAIL: live Wind Gate physics did not produce nonzero current"; exit 1;
+fi
+grep -q 'gravity=1943' <<< "$physics" || {
+  echo "FAIL: Tempest gravity was not applied"; exit 1;
+}
+grep -q 'speed=352' <<< "$physics" || {
+  echo "FAIL: Tempest obstacle speed was not applied"; exit 1;
+}
+echo "PASS: difficulty persists and live Tempest Wind Gate physics runs."
+
 echo "PASS: Android app process survives boot and splash navigation."

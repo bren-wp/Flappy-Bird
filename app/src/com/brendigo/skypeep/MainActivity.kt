@@ -25,6 +25,8 @@ class MainActivity : AndroidApplication() {
         // Diagnostic-only animated-world screenshot fixture.
         val qaBackgroundMotion = if (debuggable)
             intent.getBooleanExtra("sky_peep_qa_background_motion", false) else false
+        val qaDifficulty = if (debuggable)
+            intent.getIntExtra("sky_peep_qa_difficulty", -1) else -1
         initialize(SkyPeepGame(shareText = { result ->
             runOnUiThread {
                 // Android may destroy the activity while the system chooser opens.
@@ -42,6 +44,7 @@ class MainActivity : AndroidApplication() {
         }, qaWorld = qaWorld, qaSkin = qaSkin,
             qaVictory = qaVictory, qaPillars = qaPillars,
             qaScore = qaScore, qaMapUnlocked = qaMapUnlocked,
-            qaLoss = qaLoss, qaBackgroundMotion = qaBackgroundMotion), config)
+            qaLoss = qaLoss, qaBackgroundMotion = qaBackgroundMotion,
+            qaDifficulty = qaDifficulty), config)
     }
 }

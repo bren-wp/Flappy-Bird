@@ -47,6 +47,18 @@ class SkyPeepUiTouchTest {
         assertFalse(SkyPeepUiTouch.shopBack(470f, 1450f))
     }
 
+    @Test fun settingsRowsHaveAccurateHitboxesAndInertGutters() {
+        for (row in 0..3) {
+            val top = 543f + row * 143f
+            assertEquals(row, SkyPeepUiTouch.settingsRowAt(470f, top+60f))
+            assertEquals(row, SkyPeepUiTouch.settingsRowAt(137f, top))
+            assertNull(SkyPeepUiTouch.settingsRowAt(470f, top+129f))
+            assertNull(SkyPeepUiTouch.settingsRowAt(110f, top+60f))
+            assertNull(SkyPeepUiTouch.settingsRowAt(830f, top+60f))
+        }
+        assertEquals(3, SkyPeepUiTouch.settingsRowAt(695f, 1040f))
+    }
+
     @Test fun settingsBackHitboxMatchesTheVisibleBadge() {
         assertTrue(SkyPeepUiTouch.settingsBack(465f, 1380f))
         assertTrue(SkyPeepUiTouch.settingsBack(185f, 1300f))
