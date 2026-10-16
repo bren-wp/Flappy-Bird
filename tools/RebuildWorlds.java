@@ -55,7 +55,7 @@ class RebuildWorlds {
       // These source-pixel-space regions retain far more original scenery.
       {new Area(0,0,706,185),
        // Original top stone shaft with a separate irregular leafy lower cap.
-       new Area(346,116,534,451),new Oval(439,468,119,92),
+       new Area(346,116,534,451),new Oval(439,468,145,105),
        // Original bird/scarf and speed streaks: erase elliptical silhouettes,
        // retaining nearby natural island and mountain pixels.
        new Oval(235,585,158,120),new Oval(60,629,137,70),
@@ -213,6 +213,14 @@ class RebuildWorlds {
         if(original==null)throw new IOException("Unreadable SkyPeep artwork: "+file);
         int w=original.getWidth(),h=original.getHeight();
         if(w!=706||h!=1254)throw new IOException("Unexpected art size: "+w+"x"+h);
+        if(world==1){
+            // The outer dark bottom rim of the original baked-in pillar spans
+            // x≈350..535 around source y=525. Erase it completely so it
+            // cannot appear stationary beneath the moving pillar sprite.
+            for(int x:new int[]{350,535})
+                if(MASKS[0][2].alpha(x,525,27)<.99)
+                    throw new IOException("Sky Start fixed-pillar rim leaked: x="+x);
+        }
         BufferedImage air=sky(w,h,world);
         int[][] coinSky=new int[CLOUD_PASS_COINS.length][];
         if(world==2)for(int i=0;i<CLOUD_PASS_COINS.length;i++)
