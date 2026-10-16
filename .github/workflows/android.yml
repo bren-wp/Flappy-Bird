@@ -172,9 +172,19 @@ jobs:
           APK="$(find release-artifacts -type f -name 'app-debug.apk' -print -quit)"
           AAB="$(find release-artifacts -type f -name 'app-release.aab' -print -quit)"
           test -s "$APK" && test -s "$AAB"
+          # Keep the release PRIVATE while uploading files; a later push
+          # could supersede this run even after the first head check.
           gh release create "$VERSION" \
             "$APK" "$AAB" \
             --target "$GITHUB_SHA" \
             --title "SkyPeep $VERSION" \
-            --prerelease \
-            --notes '0.3.8: fixed partial pillar tile stretching, tightened visible pause/settings/skins/shop hitboxes and added deterministic real-emulator-versus-reference similarity reporting. Unit tests, Android build, and emulator smoke passed on this exact commit. Installable debug APK; UNSIGNED AAB is not ready for Google Play. 1:1 visual parity and physical-device certification remain outstanding.'
+            --draft --prerelease \
+            --notes '0.3.8: pillar seam continuity, precise visible UI controls, SKINS wallet polish and emulator/reference visual metrics. Unit tests, Android build and emulator smoke passed. Debug APK installable; AAB UNSIGNED and not Play-ready. Full 1:1 parity and device matrix remain outstanding.'
+          # A stale draft is never published; delete it and its temporary tag.
+          publish_head="$(gh api "repos/$GH_REPO/git/ref/heads/$GITHUB_REF_NAME" --jq '.object.sha')"
+          if [[ "$publish_head" != "$GITHUB_SHA" ]]; then
+            echo "Deleting superseded draft $VERSION ($GITHUB_SHA => $publish_head)"
+            gh release delete "$VERSION" --yes --cleanup-tag
+            exit 0
+          fi
+          gh release edit "$VERSION" --draft=false
