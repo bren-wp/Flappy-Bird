@@ -399,7 +399,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
             toast("COMPLETE WORLDS FOR GEMS")
             return
         }
-        if (hit(x,y,0f,1445f,210f,227f)) { screen = Screen.MENU; return }
+        if (SkyPeepUiTouch.skinsBack(x,y)) { screen = Screen.MENU; return }
         if (hit(x,y,285f,810f,398f,120f)) { selectedSkin = 0; save(); toast("DEFAULT EQUIPPED"); return }
         // Card art and prices are informational, only the BUY/EQUIP control is actionable.
         val skin = SkyPeepUiTouch.skinPurchaseAt(x,y) ?: return
