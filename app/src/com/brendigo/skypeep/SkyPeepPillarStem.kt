@@ -7,11 +7,23 @@ import kotlin.math.max
 
 /** The illustrated pillars must visually connect to the screen boundaries. */
 internal object PillarGeometry {
+    private const val TILE_HEIGHT = 144
+
     fun bottomTailHeight(bottomY: Float, spriteHeight: Float): Float =
         max(0f,bottomY-spriteHeight+24f)
 
     fun topTailStart(topY: Float, spriteHeight: Float): Float =
         topY+spriteHeight*.76f
+
+    /**
+     * Shafts grow upward from the visible cap to a screen edge. The final
+     * partial repeat must take the *trailing* rows of the source tile so its
+     * bottom edge still joins the previous full repeat without a pattern jump.
+     */
+    fun trailingSourceY(visibleHeight: Float): Int {
+        val rows = kotlin.math.ceil(visibleHeight.toDouble()).toInt().coerceIn(1, TILE_HEIGHT)
+        return TILE_HEIGHT - rows
+    }
 }
 
 /** Compact repeatable 2D shaft; original foliage, banners and caps stay in PNG artwork. */
