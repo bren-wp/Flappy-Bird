@@ -22,6 +22,17 @@ class RebuildWorlds {
             return clamp(.5+signedDistance/feather);
         }
     }
+    /** Round-ended mask for the actual articulated Wind Gate stone arches. */
+    private record Capsule(double x1,double y1,double x2,double y2,
+                           double radius) implements Region {
+        public double alpha(double x,double y,double feather) {
+            double dx=x2-x1,dy=y2-y1;
+            double t=clamp(((x-x1)*dx+(y-y1)*dy)/
+                Math.max(1.0,dx*dx+dy*dy));
+            double distance=Math.hypot(x-(x1+t*dx),y-(y1+t*dy));
+            return clamp(.5+(radius-distance)/feather);
+        }
+    }
     private record CoinCircle(double centerX,double centerY,double radius) {
         double alpha(double x,double y,double feather) {
             // Feather inside an expanded circle, not across the coin outline:
@@ -79,14 +90,32 @@ class RebuildWorlds {
        // pillar begins at x≈337,y≈790 and has its own separate removal mask.
        new Oval(409,839,128,80),new Area(311,851,536,1280),
        new Oval(406,956,139,88)},
-      {new Area(0,0,706,207),new Area(234,110,584,533),new Area(-20,421,612,773),new Area(223,703,591,1280)},
-      {new Area(0,0,706,216),new Area(194,105,651,533),new Area(-20,424,687,771),new Area(223,697,590,1280),new Area(594,642,746,1100)},
+      // Crystal Drop: preserve the photographic moon, flying islands,
+      // crystal mountain range, ruins and waterfalls behind real moving
+      // pillar sprites. Wide rectangular masks used to erase them all.
+      {new Area(0,0,706,185),
+       new Area(376,60,583,365),new Oval(470,419,150,118),
+       new Oval(366,304,25,38),new Oval(595,295,22,52),
+       new Oval(261,616,142,101),new Oval(48,639,138,42),
+       new Oval(477,758,141,104),new Area(392,803,590,1280),
+       new Oval(595,905,26,66)},
+      // Wind Gate: stone arches are offset and curved, not wide solid
+      // rectangles. Capsules remove the baked arch/flags but preserve the
+      // illustrated air currents, islands and waterfalls beside them.
+      {new Area(0,0,706,177),
+       new Capsule(310,190,350,295,80),new Oval(463,268,144,115),
+       new Capsule(354,288,457,355,91),
+       new Capsule(467,365,523,461,93),new Oval(526,515,116,91),
+       new Oval(185,643,140,101),new Oval(48,685,140,45),
+       new Capsule(440,766,362,888,96),
+       new Capsule(362,880,360,1160,92),
+       new Capsule(456,960,432,1160,99),
+       new Area(281,1140,501,1280)},
       {new Area(0,0,706,207),new Area(233,103,580,528),new Area(-20,418,618,774),new Area(219,695,591,1280)},
       {new Area(0,0,706,210),new Area(277,106,574,534),new Area(-20,418,618,774),new Area(251,700,586,1280)}
     };
     private static final Area[][] COINS = {
-      {}, {}, {},
-      {new Area(393,553,689,721)},
+      {}, {}, {}, {},
       {new Area(339,560,694,751)}, {}
     };
     // Original three Cloud Pass coin outlines: from actual source art at
@@ -96,6 +125,15 @@ class RebuildWorlds {
         new CoinCircle(443.8,678.7,43.0),
         new CoinCircle(390.0,733.4,43.0)
     };
+    private static final CoinCircle[] WIND_GATE_COINS={
+        new CoinCircle(441.0,660.0,40.0),
+        new CoinCircle(529.0,642.0,40.0),
+        new CoinCircle(617.0,626.0,40.0)
+    };
+    private static CoinCircle[] photographedCoins(int world) {
+        return world==2?CLOUD_PASS_COINS:
+               world==4?WIND_GATE_COINS:new CoinCircle[0];
+    }
     private static int mix(int a,int b,double t){return (int)Math.round(a+(b-a)*t);}
     /**
      * Small removed coins use the real scene's nearby BLUE sky samples,
@@ -243,9 +281,10 @@ class RebuildWorlds {
                     throw new IOException("Sky Start fixed-pillar rim leaked: x="+x);
         }
         BufferedImage air=sky(w,h,world);
-        int[][] coinSky=new int[CLOUD_PASS_COINS.length][];
-        if(world==2)for(int i=0;i<CLOUD_PASS_COINS.length;i++)
-            coinSky[i]=coinSkyColours(original,CLOUD_PASS_COINS[i]);
+        CoinCircle[] staticCoins=photographedCoins(world);
+        int[][] coinSky=new int[staticCoins.length][];
+        for(int i=0;i<staticCoins.length;i++)
+            coinSky[i]=coinSkyColours(original,staticCoins[i]);
         BufferedImage output=new BufferedImage(w,h,BufferedImage.TYPE_INT_RGB);
         int preserved=0, sampled=0;
         int originalIslandPixels=0, islandSamples=0;
@@ -258,21 +297,21 @@ class RebuildWorlds {
                 Region shape=MASKS[world-1][mask];
                 // Header replacement spans the whole width and needs a
                 // broad fade to avoid a sharp horizontal cut across clouds.
-                double feather=(world<=2)?(mask==0?72:27):92;
+                double feather=(world<=4)?(mask==0?72:32):92;
                 amount=Math.max(amount,shape.alpha(x,y,feather));
             }
             for(Area a:COINS[world-1])
                 amount=Math.max(amount,a.alpha(x,y,68));
             double coinAlpha=0;
             int coveredCoin=-1;
-            if(world==2)for(int i=0;i<CLOUD_PASS_COINS.length;i++){
-                double a=CLOUD_PASS_COINS[i].alpha(x,y,17);
+            for(int i=0;i<staticCoins.length;i++){
+                double a=staticCoins[i].alpha(x,y,17);
                 if(a>coinAlpha){ coinAlpha=a;coveredCoin=i; }
                 amount=Math.max(amount,a);
             }
             // The retention gate is deliberately in the gameplay strip,
             // excluding the source screenshot's static top HUD and bottom UI.
-            if(world<=2 && x%4==0 && y%4==0 && y>=210 && y<1100){
+            if(world<=4 && x%4==0 && y%4==0 && y>=210 && y<1100){
                 sampled++;
                 if(amount<.08) preserved++;
             }
@@ -283,7 +322,7 @@ class RebuildWorlds {
             }
             int from=original.getRGB(x,y),to=air.getRGB(x,y);
             if(coveredCoin>=0 && coinAlpha>0)
-                to=coinBackdrop(coinSky[coveredCoin],CLOUD_PASS_COINS[coveredCoin],y);
+                to=coinBackdrop(coinSky[coveredCoin],staticCoins[coveredCoin],y);
             int r=mix((from>>>16)&255,(to>>>16)&255,amount),
                 g=mix((from>>>8)&255,(to>>>8)&255,amount),
                 b=mix(from&255,to&255,amount);
@@ -320,12 +359,14 @@ class RebuildWorlds {
             System.out.println(
                 "SkyPeep world 2: original island, waterfall and cloud ROI source pixels intact");
         }
-        if(world<=2){
+        if(world<=4){
             double fraction=preserved/(double)Math.max(1,sampled);
             System.out.printf("SkyPeep world %d: %.1f%% original midground retained%n",
                 world,fraction*100.0);
-            if(fraction<.49)throw new IOException(
-                "Illustrated scene lost too much original detail in world "+world);
+            double threshold=world<=2?.49:.48;
+            if(fraction<threshold)throw new IOException(
+                "Illustrated scene lost too much original detail in world "+world+
+                ": retained="+fraction+" required="+threshold);
         }
         ImageWriter writer=ImageIO.getImageWritersByFormatName("jpeg").next();
         try(OutputStream o=Files.newOutputStream(file);
