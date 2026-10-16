@@ -32,6 +32,7 @@ Fly through **Sky Start**, **Cloud Pass**, **Crystal Drop**, **Wind Gate**, **Mo
 - 🌤️ Clean six-world flight backgrounds with moving bird, gates, HUD and pickups rendered in separate 2D layers
 - 🪙 Original illustrated coin and gemstone HUD plates cleaned of baked-in demo digits; balances update dynamically without replacing their artwork
 - 🪽 Six independently colour-matched winged score plates with live outlined points instead of baked-in sample value 27
+- 🎯 Exact victory and game-over button hit areas; empty margins and gutters cannot trigger an accidental navigation
 - ⭐ Live level map: selected worlds, separately marked unlocks and completions, and earned three-star progress
 - 🏛️ Textured 2D stone shafts anchored to both screen boundaries for every illustrated obstacle
 - ☁️ Soft unified cloud layers and distant world-specific mountain silhouettes, with more accurate collectible hitboxes

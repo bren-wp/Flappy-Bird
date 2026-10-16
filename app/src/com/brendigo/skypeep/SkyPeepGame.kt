@@ -34,7 +34,8 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
                   private val qaVictory: Boolean = false,
                   private val qaPillars: Boolean = false,
                   private val qaScore: Int = -1,
-                  private val qaMapUnlocked: Int = -1) : ApplicationAdapter() {
+                  private val qaMapUnlocked: Int = -1,
+                  private val qaLoss: Boolean = false) : ApplicationAdapter() {
     companion object {
         private const val W = 941f
         private const val H = 1672f
@@ -186,6 +187,9 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
                 score = targetScore()
                 finish(true)
                 Gdx.app.log("SkyPeepQA","victory level=" + level)
+            } else if (qaLoss) {
+                finish(false)
+                Gdx.app.log("SkyPeepQA","loss level=" + level)
             }
         }
     }
@@ -357,21 +361,27 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     }
 
     private fun clickResult(x: Float, y: Float) {
-        playSound("click")
-        if (y in 1195f..1505f) {
-            when {
-                x < 305f -> { screen = Screen.MENU; save() }
-                x < 628f -> {
-                    val nextLevel = if (resultWon && level < MAX_LEVEL) level + 1 else level
-                    begin(nextLevel)
-                }
-                else -> {
-                    val msg = "SkyPeep | ${levelTitle(level)} | Score $score | Best $best"
-                    if (shareText != null) shareText.invoke(msg)
-                    else Gdx.app.clipboard.contents = msg
-                    toast("SHARE RESULT")
-                }
+        // A tap in the card's empty space or between drawn buttons is inert.
+        // Touch geometry is kept outside rendering code for unit testing.
+        when (SkyPeepResultTouch.actionAt(x, y, resultWon)) {
+            SkyPeepResultTouch.Action.HOME -> {
+                playSound("click")
+                screen = Screen.MENU
+                save()
             }
+            SkyPeepResultTouch.Action.RETRY_OR_NEXT -> {
+                playSound("click")
+                val nextLevel = if (resultWon && level < MAX_LEVEL) level + 1 else level
+                begin(nextLevel)
+            }
+            SkyPeepResultTouch.Action.SHARE -> {
+                playSound("click")
+                val msg = "SkyPeep | ${levelTitle(level)} | Score $score | Best $best"
+                if (shareText != null) shareText.invoke(msg)
+                else Gdx.app.clipboard.contents = msg
+                toast("SHARE RESULT")
+            }
+            null -> Unit
         }
     }
 
@@ -774,9 +784,15 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         fitted("COINS EARNED",643f,fontSmall,1.45f,608f)
         fitted("+$earnedCoins",586f,fontLarge,1.1f,608f)
         // Touch zones match the illustrated arcade buttons, not the card.
-        badge("blue",57f,207f,256f,157f)
-        badge("green",334f,207f,274f,157f)
-        badge("wood",629f,207f,256f,157f)
+        SkyPeepResultTouch.victoryButtons.forEach { button ->
+            val surface = when (button.action) {
+                SkyPeepResultTouch.Action.HOME -> "blue"
+                SkyPeepResultTouch.Action.RETRY_OR_NEXT -> "green"
+                SkyPeepResultTouch.Action.SHARE -> "wood"
+            }
+            badge(surface, button.left, H - button.top - button.height,
+                button.width, button.height)
+        }
         fitted("HOME",303f,fontSmall,1.72f,231f,185f)
         fitted(if(level<MAX_LEVEL) "NEXT" else "REPLAY",303f,fontSmall,1.72f,251f,471f)
         fitted("SHARE",303f,fontSmall,1.72f,232f,757f)
