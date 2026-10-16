@@ -65,8 +65,8 @@ jobs:
       - name: Verify build outputs
         run: |
           # Guard against a release tag advertising the wrong packaged version.
-          grep -Eq "versionCode[[:space:]]+25" app/build.gradle
-          grep -Fq "versionName '0.3.13'" app/build.gradle
+          grep -Eq "versionCode[[:space:]]+26" app/build.gradle
+          grep -Fq "versionName '0.3.14'" app/build.gradle
           test -s app/build/outputs/apk/debug/app-debug.apk
           test -s app/build/outputs/bundle/release/app-release.aab
           unzip -t app/build/outputs/apk/debug/app-debug.apk > /dev/null
@@ -157,7 +157,7 @@ jobs:
   release:
     name: Publish verified preview
     needs: [android, emulator-smoke]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/fix/skypeep-v0.3.13-cloud-pass-island-preservation'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/fix/skypeep-v0.3.14-crystal-wind-scenery'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -179,7 +179,7 @@ jobs:
             echo "Skipping stale preview at $GITHUB_SHA; branch head is $current_head"
             exit 0
           fi
-          VERSION="v0.3.13-preview.${GITHUB_RUN_NUMBER}"
+          VERSION="v0.3.14-preview.${GITHUB_RUN_NUMBER}"
           APK="$(find release-artifacts -type f -name 'app-debug.apk' -print -quit)"
           AAB="$(find release-artifacts -type f -name 'app-release.aab' -print -quit)"
           test -s "$APK" && test -s "$AAB"
@@ -190,7 +190,7 @@ jobs:
             --target "$GITHUB_SHA" \
             --title "SkyPeep $VERSION" \
             --draft --prerelease \
-            --notes '0.3.13: fix Cloud Pass artwork regression where a lower-pillar cleanup mask erased original island foliage and waterfall. Preserve native illustrated source pixels via builder-time source-pixel ROI assertions, keep existing six-world gameplay and 18 sky routes. Requires unit tests, art pipeline and Android emulator smoke. Debug APK installable; AAB UNSIGNED and not Google Play-ready. Full 1:1 parity remains in progress.'
+            --notes '0.3.14: restore original illustrated scenery in Crystal Drop and Wind Gate by replacing broad erasure masks with targeted stone/crystal arch and moving-bird masks. Preserve moon, island waterfalls and stone bridges with pixel-exact source guards. Replace baked Wind Gate coins using independent circular masks and local sky inpainting. APK debug-installable; AAB UNSIGNED; all six worlds tested on Android emulator. Full 1:1 parity and real-device QA are not yet certified.'
           # A stale draft is never published; delete it and its temporary tag.
           publish_head="$(gh api "repos/$GH_REPO/git/ref/heads/$GITHUB_REF_NAME" --jq '.object.sha')"
           if [[ "$publish_head" != "$GITHUB_SHA" ]]; then
