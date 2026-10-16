@@ -259,4 +259,10 @@ tap_ui 470 1380
 capture loss-retry PLAY
 echo "PASS: accurate result buttons and inert margins, HOME and loss RETRY."
 
+# Compare actual emulator pixels with the project reference artwork.
+# This is a transparent diagnostic, not an unearned 1:1 certification.
+java -Djava.awt.headless=true tools/CompareSkyPeepScreens.java
+test -s smoke-results/visual-comparison.txt || {
+  echo "FAIL: screenshot visual comparison report missing"; exit 1;
+}
 echo "PASS: Android app process survives boot and splash navigation."

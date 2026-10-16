@@ -349,13 +349,18 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     }
 
     private fun clickPause(x: Float, y: Float) {
+        // Blank gutters and the darkened background remain inert.
+        val action = SkyPeepUiTouch.pauseActionAt(x, y) ?: return
         playSound("click")
-        when {
-            hit(x,y,220f,640f,500f,163f) -> screen = Screen.PLAY
-            hit(x,y,220f,798f,500f,158f) -> begin(level)
-            hit(x,y,220f,951f,500f,158f) -> { screen = Screen.MENU; save() }
-            hit(x,y,200f,1120f,545f,126f) -> setMusic(!musicEnabled)
-            hit(x,y,200f,1240f,545f,126f) -> { effectsEnabled = !effectsEnabled; save() }
+        when (action) {
+            SkyPeepUiTouch.PauseAction.RESUME -> screen = Screen.PLAY
+            SkyPeepUiTouch.PauseAction.RESTART -> begin(level)
+            SkyPeepUiTouch.PauseAction.HOME -> { screen = Screen.MENU; save() }
+            SkyPeepUiTouch.PauseAction.MUSIC -> setMusic(!musicEnabled)
+            SkyPeepUiTouch.PauseAction.SFX -> {
+                effectsEnabled = !effectsEnabled
+                save()
+            }
         }
     }
 
@@ -394,15 +399,10 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
             toast("COMPLETE WORLDS FOR GEMS")
             return
         }
-        if (hit(x,y,0f,1445f,210f,227f)) { screen = Screen.MENU; return }
+        if (SkyPeepUiTouch.skinsBack(x,y)) { screen = Screen.MENU; return }
         if (hit(x,y,285f,810f,398f,120f)) { selectedSkin = 0; save(); toast("DEFAULT EQUIPPED"); return }
-        if (y !in 1010f..1480f) return
-        val skin = when {
-            x < 233f -> 1
-            x < 470f -> 2
-            x < 708f -> 3
-            else -> 4
-        }
+        // Card art and prices are informational, only the BUY/EQUIP control is actionable.
+        val skin = SkyPeepUiTouch.skinPurchaseAt(x,y) ?: return
         if (ownedSkins[skin]) {
             selectedSkin = skin
             save()
@@ -426,41 +426,38 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     }
 
     private fun clickShop(x:Float,yTop:Float) {
-        playSound("click")
-        if(hit(x,yTop,268f,1255f,409f,177f)) {
+        if(SkyPeepUiTouch.shopBack(x,yTop)) {
+            playSound("click")
             screen=Screen.MENU
             save()
             return
         }
-        for (offer in SkyPeepTrailCatalog.all) {
-            val bottom=1060f-offer.id*195f
-            val top=H-(bottom+174f)
-            if (!hit(x,yTop,575f,top,273f,174f)) continue
-            val purchased=SkyPeepTrailCatalog.purchase(
-                offer.id,ownedTrails[offer.id],coins,gems)
-            if (!purchased.success) {
-                toast("NOT ENOUGH " + (if(offer.currency==TrailCurrency.GEMS) "GEMS" else "COINS"))
-                playSound("fail")
-                return
-            }
-            coins=purchased.coins
-            gems=purchased.gems
-            ownedTrails[offer.id]=true
-            selectedTrail=offer.id
-            save()
-            toast(if(purchased.alreadyOwned) "${offer.name} EQUIPPED"
-                  else "${offer.name} UNLOCKED")
-            // Avoid writing wallet balances into globally accessible diagnostic logs.
-            Gdx.app.log("SkyPeepShop","selected=${offer.name}")
-            playSound("win")
+        // A purchase must originate from the visible BUY/EQUIP badge.
+        val offerId = SkyPeepUiTouch.shopPurchaseAt(x,yTop) ?: return
+        val offer = SkyPeepTrailCatalog.all[offerId]
+        val purchased=SkyPeepTrailCatalog.purchase(
+            offer.id,ownedTrails[offer.id],coins,gems)
+        if (!purchased.success) {
+            toast("NOT ENOUGH " + (if(offer.currency==TrailCurrency.GEMS) "GEMS" else "COINS"))
+            playSound("fail")
             return
         }
+        coins=purchased.coins
+        gems=purchased.gems
+        ownedTrails[offer.id]=true
+        selectedTrail=offer.id
+        save()
+        toast(if(purchased.alreadyOwned) "${offer.name} EQUIPPED"
+              else "${offer.name} UNLOCKED")
+        // Avoid writing wallet balances into globally accessible diagnostic logs.
+        Gdx.app.log("SkyPeepShop","selected=${offer.name}")
+        playSound(if(purchased.alreadyOwned) "click" else "win")
     }
 
     private fun clickSettings(x: Float, y: Float) {
         playSound("click")
         when {
-            hit(x,y,160f,1280f,630f,240f) -> { screen=Screen.MENU; save() }
+            SkyPeepUiTouch.settingsBack(x,y) -> { screen=Screen.MENU; save() }
             hit(x,y,120f,555f,710f,118f) -> setMusic(!musicEnabled)
             hit(x,y,120f,698f,710f,117f) -> { effectsEnabled=!effectsEnabled; save() }
             hit(x,y,120f,840f,710f,120f) -> { vibrationEnabled=!vibrationEnabled; save() }
@@ -632,7 +629,11 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         val stop=min(H,end)
         while(y<stop-0.5f) {
             val size=min(144f,stop-y)
-            batch.draw(tile,x,y,width,size)
+            // Crop the final partial repeat instead of distorting its texture.
+            // Its trailing source rows meet the previous full repeat cleanly.
+            val sourceHeight = kotlin.math.ceil(size.toDouble()).toInt().coerceIn(1, 144)
+            val sourceY = PillarGeometry.trailingSourceY(size)
+            batch.draw(tile,x,y,width,size,0,sourceY,128,sourceHeight,false,false)
             y+=size
         }
     }
@@ -821,12 +822,14 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
 
     private fun drawSkins() {
         if(coins!=1250) {
-            badge("wood",120f,H-103f,164f,65f)
-            fitted(coins.toString(),H-56f,fontSmall,1.8f,153f,199f)
+            badge("wallet",120f,H-103f,164f,65f)
+            fitted(SkyPeepHudNumbers.compact(coins),H-35f,fontSmall,1.28f,153f,199f)
         }
         if(gems!=89) {
-            badge("wood",733f,H-103f,111f,65f)
-            fitted(gems.toString(),H-56f,fontSmall,1.8f,104f,788f)
+            // Cover the source mockup's "89" with the correct brown wallet
+            // face. Smaller type and a higher baseline keep live digits INSIDE.
+            badge("wallet",733f,H-103f,111f,65f)
+            fitted(SkyPeepHudNumbers.compact(gems),H-35f,fontSmall,1.28f,104f,788f)
         }
         if (selectedSkin!=0) {
             badge("cream",341f,H-821f,282f,68f)
@@ -834,9 +837,9 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         }
         for (i in 1..4) {
             if (ownedSkins[i]) {
-                val x=(i-1)*235f+25f
-                badge("green",x,H-1456f,188f,94f)
-                fitted(if(selectedSkin==i) "EQUIPPED" else "EQUIP",H-1398f,fontSmall,1.1f,171f,x+94f)
+                val button=SkyPeepUiTouch.skinPurchaseRect(i)
+                badge("green",button.left,H-button.top-button.height,button.width,button.height)
+                fitted(if(selectedSkin==i) "EQUIPPED" else "EQUIP",H-1398f,fontSmall,1.1f,171f,button.left+button.width/2f)
             }
         }
     }
@@ -869,8 +872,9 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
             fitted(offer.name.uppercase(Locale.ROOT),y+121f,fontSmall,1.10f,322f,410f,Color.valueOf("5B3526"))
             fitted(SkyPeepTrailCatalog.priceLabel(offer),y+66f,
                 fontSmall,1.05f,322f,410f,Color.valueOf("734428"))
+            val buyButton = SkyPeepUiTouch.shopPurchaseRect(offer.id)
             badge(if(selectedTrail==offer.id)"green" else if(ownedTrails[offer.id])"blue" else "wood",
-                594f,y+27f,224f,118f)
+                buyButton.left,H-buyButton.top-buyButton.height,buyButton.width,buyButton.height)
             val caption=when {
                 selectedTrail==offer.id -> "EQUIPPED"
                 ownedTrails[offer.id] -> "EQUIP"
@@ -947,6 +951,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
             "green" to Color.valueOf("48C62D"),
             "cream" to Color.valueOf("F6E4C4"),
             "wood" to Color.valueOf("92552F"),
+            "wallet" to Color.valueOf("573729"),
             "blue" to Color.valueOf("169CE8"),
             "red" to Color.valueOf("C83A40")
         )

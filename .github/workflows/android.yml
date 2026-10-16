@@ -10,6 +10,12 @@ on:
 permissions:
   contents: read
 
+# Only validate the newest pushed commit of a branch; outdated emulator
+# executions must not consume CI capacity or publish stale preview builds.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   android:
     runs-on: ubuntu-latest
@@ -140,7 +146,7 @@ jobs:
   release:
     name: Publish verified preview
     needs: [android, emulator-smoke]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/fix/skypeep-v0.3.7-production-hardening'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/fix/skypeep-v0.3.8-pillar-seams'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -151,16 +157,34 @@ jobs:
           path: release-artifacts
       - name: Publish APK and unsigned AAB after successful QA
         env:
-          GH_TOKEN: ${{ github.token }}
+          # Optional fine-grained Contents:write PAT for repositories where
+          # GITHUB_TOKEN cannot create Releases (HTTP 403). No secret is logged.
+          GH_TOKEN: ${{ secrets.SKYPEEP_RELEASE_TOKEN || github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          VERSION="v0.3.7-preview.${GITHUB_RUN_NUMBER}"
+          # The branch may have moved while this emulator job was running.
+          current_head="$(gh api "repos/$GH_REPO/git/ref/heads/$GITHUB_REF_NAME" --jq '.object.sha')"
+          if [[ "$current_head" != "$GITHUB_SHA" ]]; then
+            echo "Skipping stale preview at $GITHUB_SHA; branch head is $current_head"
+            exit 0
+          fi
+          VERSION="v0.3.8-preview.${GITHUB_RUN_NUMBER}"
           APK="$(find release-artifacts -type f -name 'app-debug.apk' -print -quit)"
           AAB="$(find release-artifacts -type f -name 'app-release.aab' -print -quit)"
           test -s "$APK" && test -s "$AAB"
+          # Keep the release PRIVATE while uploading files; a later push
+          # could supersede this run even after the first head check.
           gh release create "$VERSION" \
             "$APK" "$AAB" \
             --target "$GITHUB_SHA" \
             --title "SkyPeep $VERSION" \
-            --prerelease \
-            --notes '0.3.7: hardened local-only privacy, bounded rewards, safer Android sharing and reduced unused code. Android emulator tested; debug APK and UNSIGNED AAB are not a production Play Store build. Complete 1:1 visual parity and physical-device verification are still outstanding.'
+            --draft --prerelease \
+            --notes '0.3.8: pillar seam continuity, precise visible UI controls, SKINS wallet polish and emulator/reference visual metrics. Unit tests, Android build and emulator smoke passed. Debug APK installable; AAB UNSIGNED and not Play-ready. Full 1:1 parity and device matrix remain outstanding.'
+          # A stale draft is never published; delete it and its temporary tag.
+          publish_head="$(gh api "repos/$GH_REPO/git/ref/heads/$GITHUB_REF_NAME" --jq '.object.sha')"
+          if [[ "$publish_head" != "$GITHUB_SHA" ]]; then
+            echo "Deleting superseded draft $VERSION ($GITHUB_SHA => $publish_head)"
+            gh release delete "$VERSION" --yes --cleanup-tag
+            exit 0
+          fi
+          gh release edit "$VERSION" --draft=false
