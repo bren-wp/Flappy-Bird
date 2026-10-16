@@ -28,6 +28,17 @@ class SkyPeepResultTouchTest {
         }
     }
 
+    @Test fun outerControlsExcludeNarrowBlankSideMargins() {
+        for (x in listOf(80f,85f,93f,851f,860f,869f)) {
+            assertNull("Blank edge x=$x must be inert",
+                SkyPeepResultTouch.actionAt(x,1335f,false))
+        }
+        assertEquals(SkyPeepResultTouch.Action.HOME,
+            SkyPeepResultTouch.actionAt(94f,1335f,false))
+        assertEquals(SkyPeepResultTouch.Action.SHARE,
+            SkyPeepResultTouch.actionAt(850f,1335f,false))
+    }
+
     @Test fun lossBackgroundAboveAndBelowDrawnButtonsIsNotClickable() {
         for(y in listOf(1195f,1210f,1239f,1436f,1490f,1505f)) {
             assertNull("Result card background must be inert at y=$y",

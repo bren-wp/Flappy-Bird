@@ -26,9 +26,9 @@ internal object SkyPeepResultTouch {
     // Restrict loss targets to the actual visible button row, not the
     // oversized y=1195..1505 that was flagged in PR #16's code review.
     val lossButtons = listOf(
-        Button(Action.HOME, 80f, 1240f, 235f, 195f),
+        Button(Action.HOME, 94f, 1240f, 221f, 195f),
         Button(Action.RETRY_OR_NEXT, 334f, 1240f, 274f, 195f),
-        Button(Action.SHARE, 629f, 1240f, 240f, 195f)
+        Button(Action.SHARE, 629f, 1240f, 221f, 195f)
     )
 
     fun actionAt(x: Float, yTop: Float, won: Boolean): Action? =
