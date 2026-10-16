@@ -52,6 +52,10 @@ internal object SkyPeepUiTouch {
     fun shopPurchaseAt(x: Float, yTop: Float): Int? =
         (0..3).firstOrNull { shopPurchaseRect(it).contains(x, yTop) }
 
+    // Lower-left illustrated return arrow must not overlap Captain BUY.
+    fun skinsBack(x: Float, yTop: Float): Boolean =
+        Rect(22f, 1500f, 153f, 146f).contains(x, yTop)
+
     fun shopBack(x: Float, yTop: Float): Boolean =
         Rect(279f, 1290f, 384f, 137f).contains(x, yTop)
 
