@@ -1043,11 +1043,32 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         }
     }
 
+    /** Reuse the real illustrated aviator (and equipped costume) as a
+     * decorative mascot on screens lacking a supplied baked-in bird panel.
+     * Unlike a screenshot overlay, this stays a proper transparent sprite.
+     */
+    private fun drawMenuMascot(x:Float,y:Float,width:Float) {
+        val bird=pictures["bird_idle"] ?: return
+        val scale=width/BIRD_W
+        val height=width*bird.height/bird.width
+        batch.draw(bird,x,y,width,height)
+        if(selectedSkin>0) costumes[selectedSkin]?.let { costume ->
+            batch.draw(costume,
+                x+SkyPeepBirdLayout.COSTUME_X*scale,
+                y+height-SkyPeepBirdLayout.COSTUME_Y_FROM_TOP*scale,
+                SkyPeepBirdLayout.COSTUME_WIDTH*scale,
+                SkyPeepBirdLayout.COSTUME_HEIGHT*scale)
+        }
+    }
+
     private fun drawShop() {
         // Dedicated functional store, not the old SKINS screen duplicated.
         drawRect(0f,0f,W,H,Color(.04f,.13f,.30f,.72f))
         badge("cream",72f,180f,797f,1320f)
         badge("wood",117f,1365f,708f,122f)
+        // Native bird illustration gives the SHOP its own SkyPeep identity,
+        // as in the supplied PAUSE/SKINS design rather than a generic dialog.
+        drawMenuMascot(383f,1481f,175f)
         fitted("FLIGHT TRAILS",1444f,fontLarge,1.28f,657f)
         badge("dark",118f,1252f,338f,90f)
         badge("dark",483f,1252f,338f,90f)
@@ -1090,6 +1111,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         drawRect(0f,0f,W,H,Color(0f,.07f,.17f,.68f))
         badge("cream",91f,348f,759f,1020f)
         badge("wood",132f,1214f,677f,139f)
+        drawMenuMascot(381f,1350f,179f)
         fitted("SETTINGS",1340f,fontLarge,1.55f,627f)
         val names=arrayOf("MUSIC","SOUND EFFECTS","VIBRATION","DIFFICULTY")
         for(i in names.indices) {
