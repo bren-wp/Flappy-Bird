@@ -546,7 +546,9 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         flapTimer = max(0f,flapTimer-dt)
         val gravity=SkyRouteRules.gravity(difficulty)
         val skyCurrent=SkyRouteRules.windAcceleration(level,difficulty,flightBackgroundTime)
-        verticalSpeed = max(-1000f,
+        // Preserve Explorer's original -900 px/s terminal velocity, while
+        // making Breeze gentler and Tempest's descent more demanding.
+        verticalSpeed = max(-900f * difficulty.gravityFactor,
             verticalSpeed + (skyCurrent - gravity)*dt)
         birdY += verticalSpeed * dt
         if (birdY < 38f || birdY + BIRD_H > H - 205f) { finish(false); return }
