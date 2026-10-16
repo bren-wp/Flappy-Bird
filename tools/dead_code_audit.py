@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Conservative dead-code audit for the real SkyPeep Android sources.
 
-Unreferenced Kotlin imports / private declarations and unused Java private
+Unreferenced Kotlin imports / common private declaration forms and unused Java private
 methods are certain enough to block CI. Public or reflection-owned APIs are
 reported but not deleted automatically. Run with Python 3; no dependencies.
 """
@@ -29,7 +29,7 @@ for file in sorted(list(SOURCE.glob("*.kt")) + list(TOOLS.glob("*.java"))):
             if not re.search(r"\b" + re.escape(symbol) + r"\b", code):
                 problems.append(f"{file.relative_to(ROOT)}: unused import {imp[0]}")
         declarations = re.findall(
-            r"(?m)^\s*private\s+(?:suspend\s+)?(?:fun|val|var)\s+(\w+)\b", code)
+            r"(?m)^\s*private\s+(?:(?:const|lateinit|suspend|data|sealed|enum|inline|tailrec|inner|open|abstract)\s+)*(?:fun|val|var|class|object|interface|typealias)\s+(\w+)\b", code)
         for symbol in declarations:
             if len(re.findall(r"\b" + re.escape(symbol) + r"\b", code)) == 1:
                 problems.append(f"{file.relative_to(ROOT)}: unused private {symbol}")
