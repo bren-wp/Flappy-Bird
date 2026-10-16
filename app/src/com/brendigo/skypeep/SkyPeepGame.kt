@@ -108,6 +108,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     // Separate motion clock freezes scenery when paused or in a menu.
     private var flightBackgroundTime = 0f
     private var lastBackgroundLogSecond = -1
+    private var lastPhysicsLogSample = -1
     private var nextGate = 1.5f
     private val gates = mutableListOf<Gate>()
     private var message = ""
@@ -535,6 +536,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         animationTime=0f
         flightBackgroundTime=0f
         lastBackgroundLogSecond=-1
+        lastPhysicsLogSample=-1
         readyForFirstTap=true
         save()
     }
@@ -554,6 +556,18 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         flapTimer = max(0f,flapTimer-dt)
         val gravity=SkyRouteRules.gravity(difficulty)
         val skyCurrent=SkyRouteRules.windAcceleration(level,difficulty,flightBackgroundTime)
+        // Debug-only real-physics QA: log while a live flight updates, never
+        // during the frozen-background visual screenshot fixture.
+        if (qaDifficulty >= 0 && qaWorld in 1..MAX_LEVEL) {
+            val sample=(flightBackgroundTime * 5f).toInt()
+            if(sample!=lastPhysicsLogSample) {
+                lastPhysicsLogSample=sample
+                Gdx.app.log("SkyPeepPhysics",
+                    "world=$level mode=${difficulty.title} wind=${skyCurrent.toInt()} " +
+                    "gravity=${gravity.toInt()} gap=${SkyRouteRules.gap(level,difficulty).toInt()} " +
+                    "speed=${SkyRouteRules.speed(level,difficulty).toInt()}")
+            }
+        }
         // Preserve Explorer's original -900 px/s terminal velocity, while
         // making Breeze gentler and Tempest's descent more demanding.
         verticalSpeed = max(-900f * difficulty.gravityFactor,
