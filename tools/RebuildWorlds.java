@@ -359,6 +359,27 @@ class RebuildWorlds {
             System.out.println(
                 "SkyPeep world 2: original island, waterfall and cloud ROI source pixels intact");
         }
+        // Verify that removing the baked-in bird/obstacles does not destroy
+        // real islands, the moon, waterfalls or distant architecture. These
+        // coordinates belong to the ORIGINAL 706x1254 source art; checks run
+        // on the RGB framebuffer BEFORE JPEG compression.
+        if(world==3 || world==4){
+            int[][] scenery=world==3?
+                new int[][]{{210,270},{260,390},{240,450},
+                            {95,380},{670,650},{160,885},{675,960}}:
+                new int[][]{{95,370},{150,290},{650,300},
+                            {260,420},{100,930},{620,800}};
+            for(int[] point:scenery){
+                int x=point[0],y=point[1];
+                if((output.getRGB(x,y)&0x00ffffff)
+                    !=(original.getRGB(x,y)&0x00ffffff))
+                    throw new IOException("Original illustrated scenery erased in world "
+                        +world+" at "+x+","+y);
+            }
+            System.out.println("SkyPeep world "+world+
+                ": protected original landscape source pixels intact ("+
+                scenery.length+" checks)");
+        }
         if(world<=4){
             double fraction=preserved/(double)Math.max(1,sampled);
             System.out.printf("SkyPeep world %d: %.1f%% original midground retained%n",
