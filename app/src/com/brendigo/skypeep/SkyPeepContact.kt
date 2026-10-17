@@ -15,9 +15,15 @@ internal object SkyPeepContact {
     // Contact only the beak/head/torso core. No collision for open wings,\n    // animated feather tips, scarf or transparent texture padding.
     const val BODY_CENTRE_X = .595f
     const val BODY_CENTRE_Y = .465f
-    const val BODY_RADIUS_X = 56f
-    const val BODY_RADIUS_Y = 52f
-    const val CAP_SIDE_INSET = 28f
+    // Only the opaque belly/head is solid. Wings, scarf, goggles and beak
+    // overhang are animated decoration. The previous larger ellipse treated
+    // a visible few-pixel air gap beside stone as a hit.
+    const val BODY_RADIUS_X = 47f
+    const val BODY_RADIUS_Y = 44f
+    // A small consistent grace margin accounts for filtered texture fringes,
+    // invisible antialias edges and 60Hz step quantisation on real devices.
+    const val CONTACT_GRACE = 5f
+    const val CAP_SIDE_INSET = 36f
 
     internal data class Body(val cx: Float, val cy: Float, val rx: Float, val ry: Float) {
         val left: Float get() = cx - rx
@@ -36,10 +42,15 @@ internal object SkyPeepContact {
     ): Boolean {
         if (right <= left || top <= bottom || body.rx <= 0f || body.ry <= 0f)
             return false
+        // Touching the visual outline or a few antialiased pixels is not a
+        // collision. Both axes shrink by the SAME grace in world coordinates.
+        val rx = body.rx - CONTACT_GRACE
+        val ry = body.ry - CONTACT_GRACE
+        if (rx <= 0f || ry <= 0f) return false
         val nearestX = body.cx.coerceIn(left, right)
         val nearestY = body.cy.coerceIn(bottom, top)
-        val dx = (body.cx - nearestX) / body.rx
-        val dy = (body.cy - nearestY) / body.ry
+        val dx = (body.cx - nearestX) / rx
+        val dy = (body.cy - nearestY) / ry
         return dx * dx + dy * dy < 1f
     }
 
@@ -60,5 +71,6 @@ internal object SkyPeepContact {
     }
 
     fun hitsWorldEdge(body: Body, worldBottom: Float, worldTop: Float): Boolean =
-        body.bottom < worldBottom || body.top > worldTop
+        body.bottom < worldBottom - CONTACT_GRACE ||
+        body.top > worldTop + CONTACT_GRACE
 }
