@@ -11,13 +11,20 @@ internal object SkyPeepFullBleed {
         require(sourcePixels > 0)
         return sourcePixels.coerceAtMost(12)
     }
-    /** The bottom middle of menu art is scenery, while the left edge may be
-     * occupied by large illustrated islands. Matching the real core's centre
-     * prevents a coloured horizontal join on extra-tall phones.
+    /** Sample the complete original image width at the actual top/bottom
+     * edge. A former implementation mixed a centred 12px column origin with
+     * a full-width draw, producing out-of-bounds UVs on tall UI screens.
      */
-    fun safeBottomSceneryX(sourcePixels: Int): Int =
-        (sourcePixels-safeUiStrip(sourcePixels)) / 2
+    internal data class SourceBand(val x: Int, val y: Int,
+                                   val width: Int, val height: Int)
 
+    fun horizontalBand(sourceWidth: Int, sourceHeight: Int,
+                       scenery: Boolean, bottom: Boolean): SourceBand {
+        require(sourceWidth > 0 && sourceHeight > 0)
+        val rows = if (scenery) sample(sourceHeight) else safeUiStrip(sourceHeight)
+        return SourceBand(0, if (bottom) sourceHeight - rows else 0,
+                          sourceWidth, rows)
+    }
 
     fun sample(sourcePixels: Int): Int {
         require(sourcePixels > 0)
