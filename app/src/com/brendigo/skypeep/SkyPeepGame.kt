@@ -652,6 +652,22 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     }
 
     private fun updateGame(dt: Float) {
+        // Keep gameplay contact checks stable on slower Android devices:
+        // 50ms rendering frames are integrated as up to six smaller steps.
+        // Bird motion and moving gates therefore cannot skip over contact
+        // regions merely because a frame took longer to render.
+        val frameSeconds = SkyPeepPhysicsStep.boundedDelta(dt)
+        val steps = SkyPeepPhysicsStep.substepCount(frameSeconds)
+        if (steps == 0) return
+        val stepSeconds = frameSeconds / steps
+        repeat(steps) {
+            // A contact or completed route ends this render frame immediately.
+            if (screen != Screen.PLAY) return
+            updateGameStep(stepSeconds)
+        }
+    }
+
+    private fun updateGameStep(dt: Float) {
         // Debug-only GL fixture: observe active background movement without
         // collisions/gravity terminating the run during emulator capture.
         if (qaBackgroundMotion && qaWorld in 1..MAX_LEVEL) return
