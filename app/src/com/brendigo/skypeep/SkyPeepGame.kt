@@ -343,21 +343,25 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         }
         val texture = pictures[name] ?: return
         val f=visibleFrame
+        // Sample broad ORIGINAL scenery regions for overscan. Stretching a
+        // four-pixel sliver created visibly empty, flat strips on tall devices.
+        // Artwork and all UI elements inside the 941x1672 authored canvas stay
+        // at 1:1 proportions, while only the safe overscan area is extended.
+        val topSlice=SkyPeepFullBleed.sample(texture.height)
+        val sideSlice=SkyPeepFullBleed.sample(texture.width)
         if(f.extraY>.01f) {
-            // LibGDX source pixels use top-left origin. These thin strips
-            // extend natural sky above and ground/clouds below the artwork.
             batch.draw(texture,0f,-f.extraY,W,f.extraY,
-                0,texture.height-4,texture.width,4,false,false)
+                0,texture.height-topSlice,texture.width,topSlice,false,false)
             batch.draw(texture,0f,H,W,f.extraY,
-                0,0,texture.width,4,false,false)
+                0,0,texture.width,topSlice,false,false)
         }
         if(f.extraX>.01f) {
             batch.draw(texture,-f.extraX,-f.extraY,
                 f.extraX,H+2f*f.extraY,
-                0,0,4,texture.height,false,false)
+                0,0,sideSlice,texture.height,false,false)
             batch.draw(texture,W,-f.extraY,
                 f.extraX,H+2f*f.extraY,
-                texture.width-4,0,4,texture.height,false,false)
+                texture.width-sideSlice,0,sideSlice,texture.height,false,false)
         }
         // Shop and Settings darken the main-menu art beneath their cream
         // panels. Continue that EXACT overlay into the expanded margins:
