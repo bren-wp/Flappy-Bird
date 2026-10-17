@@ -14,7 +14,7 @@ class SkyPeepFullBleedTest {
     @Test fun menusSampleRealEdgeArtWithoutCopyingWalletsOrLogos() {
         for (dimension in listOf(941,1254,1672,2048,16)) {
             val pixels=SkyPeepFullBleed.safeUiStrip(dimension)
-            assertTrue(pixels <= 32)
+            assertTrue(pixels <= 12)
             assertTrue(pixels <= dimension)
             assertTrue(pixels > 0)
         }
