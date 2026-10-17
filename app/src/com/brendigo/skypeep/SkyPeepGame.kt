@@ -358,9 +358,11 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         val menuSafeWidth=SkyPeepFullBleed.safeUiStrip(texture.width)
         val horizontalSkySourceWidth=if(safeScenery) texture.width else menuSafeWidth
         val horizontalSourceWidth=if(safeScenery) sideSlice else menuSafeWidth
+        val bottomSceneryX=if(safeScenery) 0 else
+            SkyPeepFullBleed.safeBottomSceneryX(texture.width)
         if(f.extraY>.01f) {
             batch.draw(texture,0f,-f.extraY,W,f.extraY,
-                0,texture.height-topSlice,
+                bottomSceneryX,texture.height-topSlice,
                 horizontalSkySourceWidth,topSlice,false,false)
             batch.draw(texture,0f,H,W,f.extraY,
                 0,0,horizontalSkySourceWidth,topSlice,false,false)
