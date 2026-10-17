@@ -356,17 +356,14 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         // clickable-looking foreground graphics outside the authored canvas.
         // Only use the outermost sky strip for non-gameplay overscan.
         val menuSafeWidth=SkyPeepFullBleed.safeUiStrip(texture.width)
-        val upperSourceX=if(safeScenery) 0 else 0
-        val upperSourceWidth=if(safeScenery) texture.width else menuSafeWidth
-        val lowerSourceX=upperSourceX
-        val lowerSourceWidth=upperSourceWidth
+        val horizontalSkySourceWidth=if(safeScenery) texture.width else menuSafeWidth
         val horizontalSourceWidth=if(safeScenery) sideSlice else menuSafeWidth
         if(f.extraY>.01f) {
             batch.draw(texture,0f,-f.extraY,W,f.extraY,
-                lowerSourceX,texture.height-topSlice,
-                lowerSourceWidth,topSlice,false,false)
+                0,texture.height-topSlice,
+                horizontalSkySourceWidth,topSlice,false,false)
             batch.draw(texture,0f,H,W,f.extraY,
-                upperSourceX,0,upperSourceWidth,topSlice,false,false)
+                0,0,horizontalSkySourceWidth,topSlice,false,false)
         }
         if(f.extraX>.01f) {
             batch.draw(texture,-f.extraX,-f.extraY,
