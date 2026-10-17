@@ -11,6 +11,13 @@ internal object SkyPeepFullBleed {
         require(sourcePixels > 0)
         return sourcePixels.coerceAtMost(12)
     }
+    /** The bottom middle of menu art is scenery, while the left edge may be
+     * occupied by large illustrated islands. Matching the real core's centre
+     * prevents a coloured horizontal join on extra-tall phones.
+     */
+    fun safeBottomSceneryX(sourcePixels: Int): Int =
+        (sourcePixels-safeUiStrip(sourcePixels)) / 2
+
 
     fun sample(sourcePixels: Int): Int {
         require(sourcePixels > 0)
