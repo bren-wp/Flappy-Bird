@@ -6,7 +6,7 @@ package com.brendigo.skypeep
  * The 941x1672 authored content and touch geometry remain untouched.
  */
 internal object SkyPeepFullBleed {
-    /** The user-facing menu artwork has clickable-looking elements near its edge;\n     * never duplicate those controls into wide Android overscan. */ */
+    /** The user-facing menu artwork has controls near its outer edges.\n     * Never duplicate those controls into wide Android overscan.\n     */
     fun safeUiStrip(sourcePixels: Int): Int {
         require(sourcePixels > 0)
         return sourcePixels.coerceAtMost(12)
