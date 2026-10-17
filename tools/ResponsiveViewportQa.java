@@ -7,7 +7,7 @@ import java.util.Locale;
 import javax.imageio.ImageIO;
 
 /**
- * Validates REAL Android emulator screenshots from three physical viewports,
+ * Validates REAL Android emulator screenshots from four physical viewports,
  * not a resized desktop mockup. Central reference art must remain legible
  * and aligned, and the extra device area must contain actual painted art,
  * never FitViewport's empty coloured/black letterbox.
@@ -16,7 +16,7 @@ class ResponsiveViewportQa {
     private static final int DESIGN_W = 941;
     private static final int DESIGN_H = 1672;
     private static final int[][] DEVICES = {
-        {1080,2400}, {720,1280}, {1200,1920}
+        {1080,2400}, {720,1280}, {1200,1920}, {1600,2000}
     };
     private static BufferedImage image(Path file) throws IOException {
         if(!Files.isRegularFile(file))throw new IOException("Missing real Android screen: "+file);
