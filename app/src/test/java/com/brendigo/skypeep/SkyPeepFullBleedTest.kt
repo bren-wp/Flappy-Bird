@@ -24,13 +24,27 @@ class SkyPeepFullBleedTest {
             SkyPeepFullBleed.safeUiStrip(1254))
     }
 
-    @Test fun bottomSceneryCropKeepsDeviceCentreContinuous() {
-        for(width in listOf(12,16,941,1254,2048)){
-            val strip=SkyPeepFullBleed.safeUiStrip(width)
-            val start=SkyPeepFullBleed.safeBottomSceneryX(width)
-            assertTrue(start >= 0)
-            assertTrue(start+strip <= width)
-            assertTrue(kotlin.math.abs((start+strip*.5f)-width*.5f)<=.5f)
+    @Test fun tallScreenSourceBandsStayInsideOriginalTexture() {
+        for ((width,height) in listOf(12 to 16,706 to 1254,
+                                      941 to 1672,2048 to 1536)) {
+            for (scenery in listOf(false,true)) {
+                val top=SkyPeepFullBleed.horizontalBand(
+                    width,height,scenery,bottom=false)
+                val bottom=SkyPeepFullBleed.horizontalBand(
+                    width,height,scenery,bottom=true)
+                for (band in listOf(top,bottom)) {
+                    // Never combine a centre-cropped x coordinate with an
+                    // entire image width: that used to sample beyond the PNG.
+                    assertEquals(0,band.x)
+                    assertEquals(width,band.width)
+                    assertTrue(band.height > 0 && band.height <= height)
+                    assertTrue(band.y >= 0 && band.y+band.height <= height)
+                    assertEquals(width,band.x+band.width)
+                }
+                assertEquals(0,top.y)
+                assertEquals(height,bottom.y+bottom.height)
+                assertEquals(top.height,bottom.height)
+            }
         }
     }
 
