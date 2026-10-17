@@ -6,10 +6,10 @@ package com.brendigo.skypeep
  * The 941x1672 authored content and touch geometry remain untouched.
  */
 internal object SkyPeepFullBleed {
-    /** Source UI graphics start farther in than this 12px outermost border. */
+    /** Use a genuine 32px-wide illustrated edge strip, never a stretched 12px line. */
     fun safeUiStrip(sourcePixels: Int): Int {
         require(sourcePixels > 0)
-        return sourcePixels.coerceAtMost(12)
+        return sourcePixels.coerceAtMost(32)
     }
     /** The bottom middle of menu art is scenery, while the left edge may be
      * occupied by large illustrated islands. Matching the real core's centre
