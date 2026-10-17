@@ -353,24 +353,24 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         // not a tall 1/8-image slice that could repeat the logo or wallet.
         // Always sample their FULL WIDTH: stretching just 12 source columns
         // across 941 logical pixels created the user's flat horizontal bars.
-        val topSlice=if(safeScenery) SkyPeepFullBleed.sample(texture.height)
-                     else SkyPeepFullBleed.safeUiStrip(texture.height)
+        val bottomBand = SkyPeepFullBleed.horizontalBand(
+            texture.width, texture.height, safeScenery, bottom = true)
+        val topBand = SkyPeepFullBleed.horizontalBand(
+            texture.width, texture.height, safeScenery, bottom = false)
         val sideSlice=SkyPeepFullBleed.sample(texture.width)
         // Menu/level/skin illustrations contain wallet controls and a logo in
         // their full-width top bands. Sampling those bands would duplicate
         // clickable-looking foreground graphics outside the authored canvas.
         // Only use the outermost sky strip for non-gameplay overscan.
         val menuSafeWidth=SkyPeepFullBleed.safeUiStrip(texture.width)
-        val horizontalSkySourceWidth=texture.width
         val horizontalSourceWidth=if(safeScenery) sideSlice else menuSafeWidth
-        val bottomSceneryX=if(safeScenery) 0 else
-            SkyPeepFullBleed.safeBottomSceneryX(texture.width)
         if(f.extraY>.01f) {
             batch.draw(texture,0f,-f.extraY,W,f.extraY,
-                bottomSceneryX,texture.height-topSlice,
-                horizontalSkySourceWidth,topSlice,false,false)
+                bottomBand.x,bottomBand.y,
+                bottomBand.width,bottomBand.height,false,false)
             batch.draw(texture,0f,H,W,f.extraY,
-                0,0,horizontalSkySourceWidth,topSlice,false,false)
+                topBand.x,topBand.y,
+                topBand.width,topBand.height,false,false)
         }
         if(f.extraX>.01f) {
             batch.draw(texture,-f.extraX,-f.extraY,
@@ -434,7 +434,7 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
             Screen.MENU -> clickMenu(x, yTop)
             Screen.MAP -> clickMap(x, yTop)
             Screen.PLAY -> {
-                if (hit(x,yTop,806f,-visibleFrame.extraY,135f,155f)) {
+                if (SkyPeepHudLayout.pauseContains(visibleFrame,x,yTop)) {
                     screen = Screen.PAUSE
                     playSound("click")
                 }
@@ -919,15 +919,18 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         // On tall displays HUD art belongs to the PHYSICAL top of the
         // expanded world, never floating below an unused top inset.
         val top=visibleFrame.top
-        image("hud_left_$level", 14f, top-123f, 269f, 113f)
-        image("hud_right_$level", 635f, top-124f, 191f, 115f)
-        image("hud_pause_$level", 811f, top-129f, 125f, 122f)
+        val left = SkyPeepHudLayout.coinX(visibleFrame)
+        val right = SkyPeepHudLayout.gemX(visibleFrame)
+        val pause = SkyPeepHudLayout.pauseX(visibleFrame)
+        image("hud_left_$level", left, top-123f, 269f, 113f)
+        image("hud_right_$level", right, top-124f, 191f, 115f)
+        image("hud_pause_$level", pause, top-129f, 125f, 122f)
         image("hud_score_$level", 286f, top-218f, 367f, 210f)
         // The original six wallet plates are now cleaned at build time.
         // Keep illustrated gemstone, coin and edge strokes 1:1; no generic
         // overlay pills that hide the original decorative cyan borders.
-        fitted(SkyPeepHudNumbers.compact(coins),top-55f,fontSmall,1.78f,115f,191f)
-        fitted(SkyPeepHudNumbers.compact(gems),top-53f,fontSmall,1.75f,63f,766f)
+        fitted(SkyPeepHudNumbers.compact(coins),top-55f,fontSmall,1.78f,115f,left+177f)
+        fitted(SkyPeepHudNumbers.compact(gems),top-53f,fontSmall,1.75f,63f,right+131f)
         // Each original score face is cleared and reconstructed during build.
         // Render changing points on its own themed face, with a crisp outline.
         drawWingedScore()
