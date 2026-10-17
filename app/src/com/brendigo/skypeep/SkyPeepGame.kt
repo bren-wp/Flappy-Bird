@@ -349,14 +349,19 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         // at 1:1 proportions, while only the safe overscan area is extended.
         val safeScenery = screen == Screen.PLAY ||
             (screen == Screen.RESULT && resultWon)
-        val topSlice=SkyPeepFullBleed.sample(texture.height)
+        // For UI screens use only the true outer 12px SKY/SCENERY ROWS,
+        // not a tall 1/8-image slice that could repeat the logo or wallet.
+        // Always sample their FULL WIDTH: stretching just 12 source columns
+        // across 941 logical pixels created the user's flat horizontal bars.
+        val topSlice=if(safeScenery) SkyPeepFullBleed.sample(texture.height)
+                     else SkyPeepFullBleed.safeUiStrip(texture.height)
         val sideSlice=SkyPeepFullBleed.sample(texture.width)
         // Menu/level/skin illustrations contain wallet controls and a logo in
         // their full-width top bands. Sampling those bands would duplicate
         // clickable-looking foreground graphics outside the authored canvas.
         // Only use the outermost sky strip for non-gameplay overscan.
         val menuSafeWidth=SkyPeepFullBleed.safeUiStrip(texture.width)
-        val horizontalSkySourceWidth=if(safeScenery) texture.width else menuSafeWidth
+        val horizontalSkySourceWidth=texture.width
         val horizontalSourceWidth=if(safeScenery) sideSlice else menuSafeWidth
         val bottomSceneryX=if(safeScenery) 0 else
             SkyPeepFullBleed.safeBottomSceneryX(texture.width)
