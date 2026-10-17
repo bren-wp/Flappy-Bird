@@ -11,6 +11,19 @@ class SkyPeepFullBleedTest {
         assertEquals(2, SkyPeepFullBleed.sample(2))
     }
 
+    @Test fun menusNeverCopyWideSourceBandsContainingWalletsOrLogos() {
+        for (dimension in listOf(941,1254,1672,2048,16)) {
+            val pixels=SkyPeepFullBleed.safeUiStrip(dimension)
+            assertTrue(pixels <= 12)
+            assertTrue(pixels <= dimension)
+            assertTrue(pixels > 0)
+        }
+        // Gameplay backgrounds have no baked wallet controls and may safely
+        // use a broad naturally illustrated source region.
+        assertTrue(SkyPeepFullBleed.sample(1254) >
+            SkyPeepFullBleed.safeUiStrip(1254))
+    }
+
     @Test fun overscanUsesSourceArtworkOnTallAndWideDisplays() {
         for ((w,h) in listOf(360 to 800, 1080 to 2400, 1200 to 1920,
                                1440 to 3200, 2048 to 1536, 2560 to 1600)) {
