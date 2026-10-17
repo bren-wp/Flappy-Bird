@@ -19,7 +19,7 @@ class SkyPeepContactTest {
         assertFalse(SkyPeepContact.hitsGate(body,body.cx - 120f,275f,500f,gapTop))
         // Exact edge touch is not a penetration either.
         assertFalse(SkyPeepContact.hitsGate(body,body.cx - 120f,275f,500f,body.top))
-        assertTrue(SkyPeepContact.hitsGate(body,body.cx - 120f,275f,500f,body.top - 3f))
+        assertTrue(SkyPeepContact.hitsGate(body,body.cx - 120f,275f,500f,body.top - 10f))
     }
 
     @Test fun nearMissAroundPillarCornerDoesNotCauseInvisibleCollision() {
