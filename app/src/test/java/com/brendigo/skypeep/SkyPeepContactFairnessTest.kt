@@ -33,8 +33,8 @@ class SkyPeepContactFairnessTest {
         for((width,height) in listOf(360 to 640,1080 to 2400,2048 to 1536)) {
             val frame=SkyPeepScreenFrame.forPixels(width,height)
             assertFalse(SkyPeepContact.hitsWorldEdge(body,frame.bottom,frame.top))
-            assertEquals(56f,body.rx,.001f)
-            assertEquals(52f,body.ry,.001f)
+            assertEquals(SkyPeepContact.BODY_RADIUS_X,body.rx,.001f)
+            assertEquals(SkyPeepContact.BODY_RADIUS_Y,body.ry,.001f)
         }
     }
 }

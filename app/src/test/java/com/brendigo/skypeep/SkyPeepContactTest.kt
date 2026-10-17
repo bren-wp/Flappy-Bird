@@ -19,7 +19,7 @@ class SkyPeepContactTest {
         assertFalse(SkyPeepContact.hitsGate(body,body.cx - 120f,275f,500f,gapTop))
         // Exact edge touch is not a penetration either.
         assertFalse(SkyPeepContact.hitsGate(body,body.cx - 120f,275f,500f,body.top))
-        assertTrue(SkyPeepContact.hitsGate(body,body.cx - 120f,275f,500f,body.top - 3f))
+        assertTrue(SkyPeepContact.hitsGate(body,body.cx - 120f,275f,500f,body.top - 10f))
     }
 
     @Test fun nearMissAroundPillarCornerDoesNotCauseInvisibleCollision() {
@@ -40,6 +40,26 @@ class SkyPeepContactTest {
         assertTrue(SkyPeepContact.hitsGate(body,gateX-45f,275f,100f,body.cy))
     }
 
+    @Test fun nearMissWithOneToFivePixelVisualGapNeverTriggers() {
+        for (clearance in listOf(1f,2f,3f,4f,5f)) {
+            assertFalse(SkyPeepContact.hitsGate(body,body.cx-100f,275f,
+                body.cy-150f,body.top+clearance))
+            assertFalse(SkyPeepContact.hitsGate(body,body.cx-100f,275f,
+                body.bottom-clearance,body.cy+150f))
+        }
+    }
+
+    @Test fun silhouetteTouchOnStoneCornerIsNotAnInvisibleWall() {
+        val rx=body.rx
+        val ry=body.ry
+        assertFalse(SkyPeepContact.intersectsRectangle(body,
+            body.cx+rx-3f,body.cx+200f,
+            body.cy+ry-3f,body.cy+200f))
+        assertTrue(SkyPeepContact.intersectsRectangle(body,
+            body.cx+rx*.25f,body.cx+200f,
+            body.cy+ry*.25f,body.cy+200f))
+    }
+
     @Test fun realHitsBelowAndAboveOpeningStillEndFlight() {
         assertTrue(SkyPeepContact.hitsGate(body,body.cx-100f,275f,
             body.cy+12f,body.cy+250f))
@@ -51,9 +71,15 @@ class SkyPeepContactTest {
         assertFalse(SkyPeepContact.hitsWorldEdge(body,0f,1672f))
         assertFalse(SkyPeepContact.hitsWorldEdge(body,
             body.bottom,body.top))
-        assertTrue(SkyPeepContact.hitsWorldEdge(body,
+        // Touching or crossing an antialiased edge by a few virtual pixels
+        // must not end the flight.
+        assertFalse(SkyPeepContact.hitsWorldEdge(body,
             body.bottom+1f,body.top))
-        assertTrue(SkyPeepContact.hitsWorldEdge(body,
+        assertFalse(SkyPeepContact.hitsWorldEdge(body,
             body.bottom,body.top-1f))
+        assertTrue(SkyPeepContact.hitsWorldEdge(body,
+            body.bottom+SkyPeepContact.CONTACT_GRACE+1f,body.top))
+        assertTrue(SkyPeepContact.hitsWorldEdge(body,
+            body.bottom,body.top-SkyPeepContact.CONTACT_GRACE-1f))
     }
 }

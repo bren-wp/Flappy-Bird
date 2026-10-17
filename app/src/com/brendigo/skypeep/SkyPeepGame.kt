@@ -349,14 +349,19 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         // at 1:1 proportions, while only the safe overscan area is extended.
         val safeScenery = screen == Screen.PLAY ||
             (screen == Screen.RESULT && resultWon)
-        val topSlice=SkyPeepFullBleed.sample(texture.height)
+        // For UI screens use only the true outer 12px SKY/SCENERY ROWS,
+        // not a tall 1/8-image slice that could repeat the logo or wallet.
+        // Always sample their FULL WIDTH: stretching just 12 source columns
+        // across 941 logical pixels created the user's flat horizontal bars.
+        val topSlice=if(safeScenery) SkyPeepFullBleed.sample(texture.height)
+                     else SkyPeepFullBleed.safeUiStrip(texture.height)
         val sideSlice=SkyPeepFullBleed.sample(texture.width)
         // Menu/level/skin illustrations contain wallet controls and a logo in
         // their full-width top bands. Sampling those bands would duplicate
         // clickable-looking foreground graphics outside the authored canvas.
         // Only use the outermost sky strip for non-gameplay overscan.
         val menuSafeWidth=SkyPeepFullBleed.safeUiStrip(texture.width)
-        val horizontalSkySourceWidth=if(safeScenery) texture.width else menuSafeWidth
+        val horizontalSkySourceWidth=texture.width
         val horizontalSourceWidth=if(safeScenery) sideSlice else menuSafeWidth
         val bottomSceneryX=if(safeScenery) 0 else
             SkyPeepFullBleed.safeBottomSceneryX(texture.width)
@@ -647,6 +652,22 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
     }
 
     private fun updateGame(dt: Float) {
+        // Keep gameplay contact checks stable on slower Android devices:
+        // 50ms rendering frames are integrated as up to six smaller steps.
+        // Bird motion and moving gates therefore cannot skip over contact
+        // regions merely because a frame took longer to render.
+        val frameSeconds = SkyPeepPhysicsStep.boundedDelta(dt)
+        val steps = SkyPeepPhysicsStep.substepCount(frameSeconds)
+        if (steps == 0) return
+        val stepSeconds = frameSeconds / steps
+        repeat(steps) {
+            // A contact or completed route ends this render frame immediately.
+            if (screen != Screen.PLAY) return
+            updateGameStep(stepSeconds)
+        }
+    }
+
+    private fun updateGameStep(dt: Float) {
         // Debug-only GL fixture: observe active background movement without
         // collisions/gravity terminating the run during emulator capture.
         if (qaBackgroundMotion && qaWorld in 1..MAX_LEVEL) return
