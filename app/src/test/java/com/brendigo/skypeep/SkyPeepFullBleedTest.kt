@@ -24,6 +24,16 @@ class SkyPeepFullBleedTest {
             SkyPeepFullBleed.safeUiStrip(1254))
     }
 
+    @Test fun bottomSceneryCropKeepsDeviceCentreContinuous() {
+        for(width in listOf(12,16,941,1254,2048)){
+            val strip=SkyPeepFullBleed.safeUiStrip(width)
+            val start=SkyPeepFullBleed.safeBottomSceneryX(width)
+            assertTrue(start >= 0)
+            assertTrue(start+strip <= width)
+            assertTrue(kotlin.math.abs((start+strip*.5f)-width*.5f)<=.5f)
+        }
+    }
+
     @Test fun overscanUsesSourceArtworkOnTallAndWideDisplays() {
         for ((w,h) in listOf(360 to 800, 1080 to 2400, 1200 to 1920,
                                1440 to 3200, 2048 to 1536, 2560 to 1600)) {
