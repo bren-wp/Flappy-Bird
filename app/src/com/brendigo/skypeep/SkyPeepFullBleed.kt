@@ -6,6 +6,12 @@ package com.brendigo.skypeep
  * The 941x1672 authored content and touch geometry remain untouched.
  */
 internal object SkyPeepFullBleed {
+    /** Source UI graphics start farther in than this 12px outermost border. */
+    fun safeUiStrip(sourcePixels: Int): Int {
+        require(sourcePixels > 0)
+        return sourcePixels.coerceAtMost(12)
+    }
+
     fun sample(sourcePixels: Int): Int {
         require(sourcePixels > 0)
         return (sourcePixels / 8).coerceIn(4, 128).coerceAtMost(sourcePixels)
