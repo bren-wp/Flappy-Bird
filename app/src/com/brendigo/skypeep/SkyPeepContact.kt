@@ -12,12 +12,12 @@ package com.brendigo.skypeep
  */
 internal object SkyPeepContact {
     // The winged artwork is ~295 × 232 but the solid torso/head is smaller.
-    // Allow narrow passes alongside stone caps without an invisible wing hit.
+    // Contact only the beak/head/torso core. No collision for open wings,\n    // animated feather tips, scarf or transparent texture padding.
     const val BODY_CENTRE_X = .595f
     const val BODY_CENTRE_Y = .465f
-    const val BODY_RADIUS_X = 68f
-    const val BODY_RADIUS_Y = 65f
-    const val CAP_SIDE_INSET = 22f
+    const val BODY_RADIUS_X = 56f
+    const val BODY_RADIUS_Y = 52f
+    const val CAP_SIDE_INSET = 28f
 
     internal data class Body(val cx: Float, val cy: Float, val rx: Float, val ry: Float) {
         val left: Float get() = cx - rx

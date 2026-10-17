@@ -343,21 +343,38 @@ class SkyPeepGame(private val shareText: ((String) -> Unit)? = null,
         }
         val texture = pictures[name] ?: return
         val f=visibleFrame
+        // Sample broad ORIGINAL scenery regions for overscan. Stretching a
+        // four-pixel sliver created visibly empty, flat strips on tall devices.
+        // Artwork and all UI elements inside the 941x1672 authored canvas stay
+        // at 1:1 proportions, while only the safe overscan area is extended.
+        val safeScenery = screen == Screen.PLAY ||
+            (screen == Screen.RESULT && resultWon)
+        val topSlice=SkyPeepFullBleed.sample(texture.height)
+        val sideSlice=SkyPeepFullBleed.sample(texture.width)
+        // Menu/level/skin illustrations contain wallet controls and a logo in
+        // their full-width top bands. Sampling those bands would duplicate
+        // clickable-looking foreground graphics outside the authored canvas.
+        // Only use the outermost sky strip for non-gameplay overscan.
+        val menuSafeWidth=SkyPeepFullBleed.safeUiStrip(texture.width)
+        val horizontalSkySourceWidth=if(safeScenery) texture.width else menuSafeWidth
+        val horizontalSourceWidth=if(safeScenery) sideSlice else menuSafeWidth
+        val bottomSceneryX=if(safeScenery) 0 else
+            SkyPeepFullBleed.safeBottomSceneryX(texture.width)
         if(f.extraY>.01f) {
-            // LibGDX source pixels use top-left origin. These thin strips
-            // extend natural sky above and ground/clouds below the artwork.
             batch.draw(texture,0f,-f.extraY,W,f.extraY,
-                0,texture.height-4,texture.width,4,false,false)
+                bottomSceneryX,texture.height-topSlice,
+                horizontalSkySourceWidth,topSlice,false,false)
             batch.draw(texture,0f,H,W,f.extraY,
-                0,0,texture.width,4,false,false)
+                0,0,horizontalSkySourceWidth,topSlice,false,false)
         }
         if(f.extraX>.01f) {
             batch.draw(texture,-f.extraX,-f.extraY,
                 f.extraX,H+2f*f.extraY,
-                0,0,4,texture.height,false,false)
+                0,0,horizontalSourceWidth,texture.height,false,false)
             batch.draw(texture,W,-f.extraY,
                 f.extraX,H+2f*f.extraY,
-                texture.width-4,0,4,texture.height,false,false)
+                texture.width-horizontalSourceWidth,0,
+                horizontalSourceWidth,texture.height,false,false)
         }
         // Shop and Settings darken the main-menu art beneath their cream
         // panels. Continue that EXACT overlay into the expanded margins:

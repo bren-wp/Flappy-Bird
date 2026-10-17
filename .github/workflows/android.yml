@@ -65,8 +65,8 @@ jobs:
       - name: Verify build outputs
         run: |
           # Guard against a release tag advertising the wrong packaged version.
-          grep -Eq "versionCode[[:space:]]+27" app/build.gradle
-          grep -Fq "versionName '0.3.15'" app/build.gradle
+          grep -Eq "versionCode[[:space:]]+28" app/build.gradle
+          grep -Fq "versionName '0.3.16'" app/build.gradle
           test -s app/build/outputs/apk/debug/app-debug.apk
           test -s app/build/outputs/bundle/release/app-release.aab
           unzip -t app/build/outputs/apk/debug/app-debug.apk > /dev/null
@@ -157,7 +157,7 @@ jobs:
   release:
     name: Publish verified preview
     needs: [android, emulator-smoke]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/fix/skypeep-v0.3.15-fair-collisions-fullscreen'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/fix/skypeep-v0.3.16-fair-contact-edge-art'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -179,7 +179,7 @@ jobs:
             echo "Skipping stale preview at $GITHUB_SHA; branch head is $current_head"
             exit 0
           fi
-          VERSION="v0.3.15-preview.${GITHUB_RUN_NUMBER}"
+          VERSION="v0.3.16-preview.${GITHUB_RUN_NUMBER}"
           APK="$(find release-artifacts -type f -name 'app-debug.apk' -print -quit)"
           AAB="$(find release-artifacts -type f -name 'app-release.aab' -print -quit)"
           test -s "$APK" && test -s "$AAB"
@@ -190,7 +190,7 @@ jobs:
             --target "$GITHUB_SHA" \
             --title "SkyPeep $VERSION" \
             --draft --prerelease \
-            --notes '0.3.15: replace false-positive rectangular bird/pillar collisions with accurate central-body ellipse contact and visible pillar cap insets; remove FitViewport letterboxes using ExtendViewport with original scene-edge bleed without stretching reference UI; anchor score/HUD/pause to physical top on tall phones; test navigation on 1080x2400, 720x1280 and 1200x1920 Android displays. Debug APK installable; AAB UNSIGNED; final visual 1:1 and physical device QA not yet certified.'
+            --notes '0.3.16: refine near-miss contact ellipse to central visible torso/head; extend all screens onto tall/wide device overscan using natural 1/8th illustrated edge crops instead of 4px solid-color strips; regress exact collisions, settings and phone/tablet viewports. Requires Android build, unit and real emulator smoke. Debug APK installable; AAB UNSIGNED. Full 1:1 art parity still pending.'
           # A stale draft is never published; delete it and its temporary tag.
           publish_head="$(gh api "repos/$GH_REPO/git/ref/heads/$GITHUB_REF_NAME" --jq '.object.sha')"
           if [[ "$publish_head" != "$GITHUB_SHA" ]]; then

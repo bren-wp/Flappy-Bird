@@ -38,6 +38,8 @@ Fly through **Sky Start**, **Cloud Pass**, **Crystal Drop**, **Wind Gate**, **Mo
 - 📱 Full-screen Android presentation for tall/compact/wide devices, with preserved artwork proportions and physically top-anchored HUD
 - 🎨 More illustrated, polished Shop and Settings controls with the original SkyPeep mascot
 - 🎮 Responsive touch-to-flap flight and score progression
+- 🎯 Fair visible-body contact geometry: decorative wing/scarf tips and transparent pillar margins do not trigger near-miss deaths
+- 📱 Full-screen portrait viewport for tall/compact phones and wide tablets, with actual illustrated overscan instead of flat stretched edge-pixel bands
 - 🗺️ Six themed levels with stars and unlocks
 - 🐦 Three-frame character flight animation with distinct Captain, Forest, Cosmic and Royal 2D costumes
 - 🌈 Dedicated Flight Trails shop with four cosmetics, real unlock and equip actions, and saved coin/gem transactions
