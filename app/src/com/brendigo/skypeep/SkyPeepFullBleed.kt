@@ -6,10 +6,10 @@ package com.brendigo.skypeep
  * The 941x1672 authored content and touch geometry remain untouched.
  */
 internal object SkyPeepFullBleed {
-    /** Use a genuine 32px-wide illustrated edge strip, never a stretched 12px line. */
+    /** The user-facing menu artwork has clickable-looking elements near its edge;\n     * never duplicate those controls into wide Android overscan. */ */
     fun safeUiStrip(sourcePixels: Int): Int {
         require(sourcePixels > 0)
-        return sourcePixels.coerceAtMost(32)
+        return sourcePixels.coerceAtMost(12)
     }
     /** The bottom middle of menu art is scenery, while the left edge may be
      * occupied by large illustrated islands. Matching the real core's centre
